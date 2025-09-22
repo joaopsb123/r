@@ -1,7 +1,8 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
 import { getFirestore, collection, addDoc, query, orderBy, onSnapshot, serverTimestamp, doc, getDoc, updateDoc, arrayUnion, setDoc, where, getDocs, arrayRemove } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 import { getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
-import { getStorage, ref, uploadBytes, getDownloadURL } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-storage.js";
+// Remova o import do Firebase Storage
+// import { getStorage, ref, uploadBytes, getDownloadURL } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-storage.js";
 
 // Firebase config
 const firebaseConfig = {
@@ -18,10 +19,17 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 const auth = getAuth(app);
-const storage = getStorage(app);
+// Remova a inicialização do Storage
+// const storage = getStorage(app);
+
+// --- CONFIGURAÇÃO DO CLOUDINARY ---
+const CLOUDINARY_CLOUD_NAME = 'dya1jd0mx';
+const CLOUDINARY_UPLOAD_PRESET = 'Social';
+const CLOUDINARY_URL = `https://api.cloudinary.com/v1_1/${CLOUDINARY_CLOUD_NAME}/upload`;
+// --- FIM DA CONFIGURAÇÃO ---
 
 let userId;
-let currentProfileId; // Para saber qual perfil está a ser visualizado
+let currentProfileId;
 let currentDmId = null;
 
 // ---------- UI ELEMENTS ----------
@@ -62,7 +70,6 @@ onAuthStateChanged(auth, async (user) => {
   }
 });
 
-// Lidar com o envio do formulário de autenticação
 authForm.addEventListener("submit", async (e) => {
   e.preventDefault();
   const email = document.getElementById("email").value;
@@ -89,7 +96,6 @@ authForm.addEventListener("submit", async (e) => {
   }
 });
 
-// Alternar entre login e registo
 toggleAuthLink.addEventListener("click", (e) => {
   e.preventDefault();
   isLoginMode = !isLoginMode;
@@ -135,7 +141,7 @@ function carregarNotificacoes() {
   });
 }
 
-// ---------- FEED (AGORA COM FOTOS) ----------
+// ---------- FEED (AGORA COM FOTOS CLOUDINARY) ----------
 const postForm = document.getElementById("postForm");
 const feedPosts = document.getElementById("feedPosts");
 
@@ -148,9 +154,19 @@ postForm.addEventListener("submit", async (e) => {
   try {
     let imageUrl = null;
     if (imageFile) {
-      const storageRef = ref(storage, `images/${Date.now()}_${imageFile.name}`);
-      const snapshot = await uploadBytes(storageRef, imageFile);
-      imageUrl = await getDownloadURL(snapshot.ref);
+      // --- CÓDIGO DE UPLOAD PARA CLOUDINARY ---
+      const formData = new FormData();
+      formData.append('file', imageFile);
+      formData.append('upload_preset', CLOUDINARY_UPLOAD_PRESET);
+      
+      const response = await fetch(CLOUDINARY_URL, {
+        method: 'POST',
+        body: formData,
+      });
+      
+      const data = await response.json();
+      imageUrl = data.secure_url; // URL da imagem segura
+      // --- FIM DO CÓDIGO CLOUDINARY ---
     }
 
     await addDoc(collection(db, "posts"), {
@@ -230,7 +246,7 @@ const profilePhotos = document.getElementById("profilePhotos");
 
 function mostrarPerfil(targetUserId) {
   currentProfileId = targetUserId;
-  mostrar('profile'); // Função já existente para mudar de secção
+  mostrar('profile');
   carregarPerfil(targetUserId);
 }
 
@@ -268,18 +284,27 @@ async function carregarPerfil(targetUserId) {
   `;
   
   if (isMyProfile) {
-    // Adiciona o uploader de foto de perfil
     const photoUploader = document.createElement('div');
     photoUploader.innerHTML = `<input type="file" id="profilePicInput" accept="image/*">`;
     profileHeader.appendChild(photoUploader);
     document.getElementById('profilePicInput').addEventListener('change', async (e) => {
       const file = e.target.files[0];
       if (file) {
-        const picRef = ref(storage, `profile_pics/${userId}`);
-        await uploadBytes(picRef, file);
-        const url = await getDownloadURL(picRef);
+        // --- CÓDIGO DE UPLOAD PARA CLOUDINARY (FOTO DE PERFIL) ---
+        const formData = new FormData();
+        formData.append('file', file);
+        formData.append('upload_preset', CLOUDINARY_UPLOAD_PRESET);
+        
+        const response = await fetch(CLOUDINARY_URL, {
+          method: 'POST',
+          body: formData,
+        });
+        
+        const data = await response.json();
+        const url = data.secure_url;
         await updateDoc(doc(db, "users", userId), { profilePicUrl: url });
-        carregarPerfil(userId); // Recarregar para mostrar a nova foto
+        carregarPerfil(userId);
+        // --- FIM DO CÓDIGO CLOUDINARY ---
       }
     });
   } else {
@@ -340,7 +365,6 @@ const dmUserList = document.getElementById("dmUserList");
 const privateChatBox = document.getElementById("privateChat");
 const dmMsgForm = document.getElementById("dmMsgForm");
 
-// Trocar entre chats
 publicChatBtn.addEventListener('click', () => {
     publicChatBtn.classList.add('active');
     dmsBtn.classList.remove('active');
@@ -354,7 +378,6 @@ dmsBtn.addEventListener('click', () => {
     dmsContainer.style.display = 'block';
 });
 
-// Chat Público
 publicMsgForm.addEventListener("submit", async (e) => {
   e.preventDefault();
   const text = document.getElementById("publicMsgInput").value;
@@ -378,7 +401,6 @@ function carregarMensagensPublicas() {
   });
 }
 
-// Mensagens Privadas (DMs)
 function carregarDmUserList() {
     dmUserList.innerHTML = "";
     const usersQuery = query(collection(db, "users"), where(documentId(), "!=", userId));
@@ -399,7 +421,6 @@ async function abrirChatPrivado(targetUserId, targetName) {
     const chatIds = [userId, targetUserId].sort();
     currentDmId = chatIds.join('_');
 
-    // Esconder a lista de utilizadores e mostrar o chat
     dmUserList.style.display = 'none';
     privateChatBox.style.display = 'flex';
     dmMsgForm.style.display = 'flex';
@@ -455,45 +476,5 @@ async function deixarDeSeguirUtilizador(userToUnfollowId) {
   await updateDoc(userRef, { following: arrayRemove(userToUnfollowId) });
   await updateDoc(userToUnfollowRef, { followers: arrayRemove(userId) });
   carregarPerfil(currentProfileId);
-}
-
-// ... Outras funções (stories, grupos, pesquisa)
-const storiesBox = document.getElementById("storiesBox");
-function carregarStories() { /* ... */ }
-const groupsBox = document.getElementById("groupsBox");
-function carregarGrupos() { /* ... */ }
-const searchInput = document.getElementById("searchInput");
-const results = document.getElementById("results");
-let allUsers = [];
-function carregarPesquisa() {
-  const usersCol = collection(db, "users");
-  onSnapshot(usersCol, snapshot => {
-    allUsers = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-    filterAndRenderUsers();
-  });
-}
-searchInput.addEventListener("input", () => { filterAndRenderUsers(); });
-function filterAndRenderUsers() {
-  const qText = searchInput.value.toLowerCase();
-  results.innerHTML = "";
-  const filteredUsers = allUsers.filter(user => user.name?.toLowerCase().includes(qText) && user.id !== userId);
-  filteredUsers.forEach(user => {
-    const div = document.createElement("div");
-    div.classList.add("search-result-item");
-    const isFollowing = allUsers.find(u => u.id === userId)?.following?.includes(user.id);
-    const btnText = isFollowing ? "A seguir" : "Seguir";
-    const btnClass = isFollowing ? "unfollow-btn" : "follow-btn";
-    div.innerHTML = `
-      <span onclick="mostrarPerfil('${user.id}')">${user.name}</span>
-      <button class="${btnClass}" data-userid="${user.id}">${btnText}</button>
-    `;
-    results.appendChild(div);
-  });
-  document.querySelectorAll('.follow-btn').forEach(btn => {
-    btn.addEventListener('click', async (e) => { await seguirUtilizador(e.target.dataset.userid); });
-  });
-  document.querySelectorAll('.unfollow-btn').forEach(btn => {
-    btn.addEventListener('click', async (e) => { await deixarDeSeguirUtilizador(e.target.dataset.userid); });
-  });
-      }
-      
+                                }
+        
