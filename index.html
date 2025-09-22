@@ -8,56 +8,74 @@
 </head>
 <body>
   <div class="main-container">
-    <header class="app-header">
-      <h1 class="logo">InstaClone</h1>
-    </header>
 
-    <main class="app-content">
-      <nav class="app-nav">
-        <button class="nav-button active" onclick="mostrar('feed')">
-          <img src="https://img.icons8.com/material-outlined/24/ffffff/home.png" alt="Feed">
-        </button>
-        <button class="nav-button" onclick="mostrar('search')">
-          <img src="https://img.icons8.com/material-outlined/24/ffffff/search.png" alt="Pesquisar">
-        </button>
-        <button class="nav-button" onclick="mostrar('messages')">
-          <img src="https://img.icons8.com/material-outlined/24/ffffff/speech-bubble.png" alt="Mensagens">
-        </button>
-        <button class="nav-button" onclick="mostrar('profile')">
-          <img src="https://img.icons8.com/material-outlined/24/ffffff/user-male-circle.png" alt="Perfil">
-        </button>
-      </nav>
-
-      <section id="feed" class="content-section active">
-        <div class="stories-bar" id="storiesBox"></div>
-        <div class="post-form-container">
-          <form id="postForm" class="post-form">
-            <input type="text" id="caption" placeholder="O que você está pensando?" required>
-            <button type="submit" class="post-btn">Publicar</button>
-          </form>
-        </div>
-        <div id="feedPosts" class="feed-posts"></div>
-      </section>
-
-      <section id="profile" class="content-section">
-        <div id="profileInfo" class="profile-info"></div>
-      </section>
-
-      <section id="messages" class="content-section">
-        <div id="chatBox" class="chat-box"></div>
-        <form id="msgForm" class="msg-form">
-          <input type="text" id="msgInput" placeholder="Escreva uma mensagem..." required>
-          <button type="submit" class="msg-btn">Enviar</button>
+    <section id="auth" class="content-section active">
+      <div class="auth-box">
+        <h1 class="logo auth-logo">InstaClone</h1>
+        <form id="authForm" class="auth-form">
+          <input type="email" id="email" placeholder="Email" required>
+          <input type="password" id="password" placeholder="Senha" required>
+          <button type="submit" id="authBtn">Entrar</button>
         </form>
-      </section>
+        <p class="auth-toggle">
+          Não tem uma conta? <a href="#" id="toggleAuth">Criar conta</a>
+        </p>
+      </div>
+    </section>
 
-      <section id="search" class="content-section">
-        <div class="search-container">
-          <input type="text" id="searchInput" placeholder="Pesquisar..." class="search-input">
-        </div>
-        <div id="results" class="search-results"></div>
-      </section>
-    </main>
+    <div id="app" style="display: none;">
+      <header class="app-header">
+        <h1 class="logo">InstaClone</h1>
+        <button id="logoutBtn" class="logout-btn">Sair</button>
+      </header>
+
+      <main class="app-content">
+        <nav class="app-nav">
+          <button class="nav-button active" onclick="mostrar('feed')">
+            <img src="https://img.icons8.com/material-outlined/24/ffffff/home.png" alt="Feed">
+          </button>
+          <button class="nav-button" onclick="mostrar('search')">
+            <img src="https://img.icons8.com/material-outlined/24/ffffff/search.png" alt="Pesquisar">
+          </button>
+          <button class="nav-button" onclick="mostrar('messages')">
+            <img src="https://img.icons8.com/material-outlined/24/ffffff/speech-bubble.png" alt="Mensagens">
+          </button>
+          <button class="nav-button" onclick="mostrar('profile')">
+            <img src="https://img.icons8.com/material-outlined/24/ffffff/user-male-circle.png" alt="Perfil">
+          </button>
+        </nav>
+
+        <section id="feed" class="content-section active">
+          <div class="stories-bar" id="storiesBox"></div>
+          <div class="post-form-container">
+            <form id="postForm" class="post-form">
+              <input type="text" id="caption" placeholder="O que você está pensando?" required>
+              <button type="submit" class="post-btn">Publicar</button>
+            </form>
+          </div>
+          <div id="feedPosts" class="feed-posts"></div>
+        </section>
+
+        <section id="profile" class="content-section">
+          <div id="profileInfo" class="profile-info"></div>
+        </section>
+
+        <section id="messages" class="content-section">
+          <div id="chatBox" class="chat-box"></div>
+          <form id="msgForm" class="msg-form">
+            <input type="text" id="msgInput" placeholder="Escreva uma mensagem..." required>
+            <button type="submit" class="msg-btn">Enviar</button>
+          </form>
+        </section>
+
+        <section id="search" class="content-section">
+          <div class="search-container">
+            <input type="text" id="searchInput" placeholder="Pesquisar..." class="search-input">
+          </div>
+          <div id="results" class="search-results"></div>
+        </section>
+      </main>
+    </div>
   </div>
 
   <script type="module" src="./script.js"></script>
@@ -70,4 +88,5 @@
     }
   </script>
 </body>
-</html>
+  </html>
+  
