@@ -239,6 +239,17 @@ body {
   font-size: 1rem;
 }
 
+.edit-profile-btn {
+  background-color: var(--primary-color);
+  color: #fff;
+  border: none;
+  border-radius: 20px;
+  padding: 0.5rem 1rem;
+  margin-top: 1rem;
+  cursor: pointer;
+  font-weight: bold;
+}
+
 /* Mensagens */
 .chat-box {
   border: 1px solid var(--border-color);
@@ -318,6 +329,9 @@ body {
 }
 
 .search-result-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
   padding: 0.75rem 1rem;
   cursor: pointer;
   transition: background-color 0.2s;
@@ -327,6 +341,16 @@ body {
   background-color: #f0f0f0;
 }
 
+.follow-btn {
+  background-color: var(--primary-color);
+  color: #fff;
+  border: none;
+  border-radius: 5px;
+  padding: 0.5rem 1rem;
+  font-weight: bold;
+  cursor: pointer;
+}
+
 /* Grupos */
 .group-item {
   background-color: var(--card-bg-color);
@@ -334,5 +358,4 @@ body {
   border-radius: 8px;
   padding: 1rem;
   margin-bottom: 1rem;
-    }
-  
+  }
