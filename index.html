@@ -26,8 +26,21 @@
     <div id="app" style="display: none;">
       <header class="app-header">
         <h1 class="logo">InstaClone</h1>
-        <button id="logoutBtn" class="logout-btn">Sair</button>
+        <div class="header-actions">
+          <button id="notificationBtn" class="notification-btn">
+            🔔<span id="notificationCount" class="notification-count"></span>
+          </button>
+          <button id="logoutBtn" class="logout-btn">Sair</button>
+        </div>
       </header>
+
+      <div id="notificationModal" class="modal">
+        <div class="modal-content">
+          <span class="close-btn">&times;</span>
+          <h2 class="modal-title">Notificações</h2>
+          <div id="notificationList" class="notification-list"></div>
+        </div>
+      </div>
 
       <main class="app-content">
         <nav class="app-nav">
@@ -58,16 +71,30 @@
         </section>
 
         <section id="profile" class="content-section">
-          <div id="profileInfo" class="profile-info"></div>
-          <div id="myPhotos" class="my-photos-grid"></div>
+          <div id="profileHeader" class="profile-info"></div>
+          <div id="profilePhotos" class="my-photos-grid"></div>
         </section>
 
         <section id="messages" class="content-section">
-          <div id="chatBox" class="chat-box"></div>
-          <form id="msgForm" class="msg-form">
-            <input type="text" id="msgInput" placeholder="Escreva uma mensagem..." required>
-            <button type="submit" class="msg-btn">Enviar</button>
-          </form>
+          <div id="dmList" class="dm-list">
+            <button id="publicChatBtn" class="chat-toggle-btn active">Chat Público</button>
+            <button id="dmsBtn" class="chat-toggle-btn">DMs</button>
+            <div id="publicChat" class="chat-container active">
+              <div id="publicChatBox" class="chat-box"></div>
+              <form id="publicMsgForm" class="msg-form">
+                <input type="text" id="publicMsgInput" placeholder="Escreva uma mensagem..." required>
+                <button type="submit" class="msg-btn">Enviar</button>
+              </form>
+            </div>
+            <div id="dms" class="chat-container">
+              <div id="dmUserList" class="dm-user-list"></div>
+              <div id="privateChat" class="chat-box" style="display: none;"></div>
+              <form id="dmMsgForm" class="msg-form" style="display: none;">
+                <input type="text" id="dmMsgInput" placeholder="Escreva uma mensagem..." required>
+                <button type="submit" class="msg-btn">Enviar</button>
+              </form>
+            </div>
+          </div>
         </section>
 
         <section id="search" class="content-section">
@@ -90,5 +117,5 @@
     }
   </script>
 </body>
-            </html>
-            
+                </html>
+                
