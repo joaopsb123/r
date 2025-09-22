@@ -134,7 +134,7 @@ authForm.addEventListener("submit", async (e) => {
   try {
     if (isLoginMode) {
       await signInWithEmailAndPassword(auth, email, password);
-      console.log("Login bem-sucedido!");
+      alert("Login bem-sucedido!");
     } else {
       const userCredential = await createUserWithEmailAndPassword(auth, email, password);
       await setDoc(doc(db, "users", userCredential.user.uid), {
@@ -145,7 +145,7 @@ authForm.addEventListener("submit", async (e) => {
         following: [],
         followers: []
       });
-      console.log("Registo bem-sucedido!");
+      alert("Registo bem-sucedido!");
     }
   } catch (error) {
     console.error("Erro de autenticação:", error.message);
@@ -545,4 +545,4 @@ function carregarDmUserList() {
     const usersQuery = query(collection(db, "users"));
     onSnapshot(usersQuery, (snapshot) => {
         snapshot.forEach(doc => {
-            con
+            const userData 
