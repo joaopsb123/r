@@ -6,13 +6,14 @@
   <link rel="stylesheet" href="style.css">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
 </head>
-<body>
+<body class="light-theme">
   <div class="main-container">
 
     <section id="auth" class="content-section active">
       <div class="auth-box">
-        <h1 class="logo auth-logo">InstaClone</h1>
+        <h1 class="logo auth-logo">Social App</h1>
         <form id="authForm" class="auth-form">
+          <input type="text" id="username" placeholder="Nome de Utilizador" style="display: none;" required>
           <input type="email" id="email" placeholder="Email" required>
           <input type="password" id="password" placeholder="Senha" required>
           <button type="submit" id="authBtn">Entrar</button>
@@ -25,7 +26,7 @@
 
     <div id="app" style="display: none;">
       <header class="app-header">
-        <h1 class="logo">InstaClone</h1>
+        <h1 class="logo">Social App</h1>
         <div class="header-actions">
           <button id="notificationBtn" class="notification-btn">
             🔔<span id="notificationCount" class="notification-count"></span>
@@ -55,6 +56,9 @@
           </button>
           <button class="nav-button" onclick="mostrar('profile')">
             <img src="https://img.icons8.com/material-outlined/24/ffffff/user-male-circle.png" alt="Perfil">
+          </button>
+          <button class="nav-button" onclick="mostrar('settings')">
+            ⚙️
           </button>
         </nav>
 
@@ -103,6 +107,26 @@
           </div>
           <div id="results" class="search-results"></div>
         </section>
+
+        <section id="settings" class="content-section">
+          <div class="settings-panel">
+            <h2>Definições</h2>
+            <div class="setting-item">
+              <span>Tema:</span>
+              <div class="theme-switch">
+                <button id="lightThemeBtn">Claro</button>
+                <button id="darkThemeBtn">Escuro</button>
+              </div>
+            </div>
+            <div class="setting-item">
+              <span>Fundo Personalizado:</span>
+              <input type="file" id="wallpaperInput" accept="image/*">
+            </div>
+            <div class="setting-item">
+              <button id="clearWallpaperBtn" class="danger-btn">Remover Fundo</button>
+            </div>
+          </div>
+        </section>
       </main>
     </div>
   </div>
@@ -117,5 +141,5 @@
     }
   </script>
 </body>
-                </html>
-                
+  </html>
+  
