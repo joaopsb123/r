@@ -23,6 +23,7 @@ const feedPosts = document.getElementById("feedPosts");
 postForm.addEventListener("submit", async (e) => {
   e.preventDefault();
   const caption = document.getElementById("caption").value;
+  if (caption.trim() === "") return;
   await addDoc(collection(db, "posts"), { caption, createdAt: serverTimestamp() });
   postForm.reset();
 });
@@ -32,23 +33,38 @@ onSnapshot(feedQuery, snapshot => {
   feedPosts.innerHTML = "";
   snapshot.forEach(doc => {
     const data = doc.data();
+    const formattedTime = data.createdAt ? new Date(data.createdAt.seconds * 1000).toLocaleString() : 'agora';
     const div = document.createElement("div");
-    div.innerHTML = `<p>${data.caption}</p>`;
+    div.classList.add("post-card");
+    div.innerHTML = `
+      <div class="post-header">
+        <span class="user-name">Usuário Anônimo</span>
+        <span class="post-time">${formattedTime}</span>
+      </div>
+      <p class="post-caption">${data.caption}</p>
+    `;
     feedPosts.appendChild(div);
   });
 });
 
 // ---------- PERFIL ----------
 const profileInfo = document.getElementById("profileInfo");
-const userId = "meuUserId"; // exemplo fixo
+const userId = "meuUserId"; // exemplo fixo - em uma aplicação real, este ID seria do usuário logado
 
 async function carregarPerfil() {
   const ref = doc(db, "users", userId);
   const snap = await getDoc(ref);
   if (snap.exists()) {
-    profileInfo.innerHTML = `<p>Nome: ${snap.data().name}</p><p>Bio: ${snap.data().bio}</p>`;
+    const data = snap.data();
+    profileInfo.innerHTML = `
+      <div class="profile-header">
+        <img class="profile-pic" src="https://via.placeholder.com/150" alt="Foto de Perfil">
+        <h2 class="profile-name">${data.name}</h2>
+      </div>
+      <p class="profile-bio">${data.bio}</p>
+    `;
   } else {
-    profileInfo.innerHTML = "<p>Utilizador não encontrado.</p>";
+    profileInfo.innerHTML = "<p class='profile-not-found'>Utilizador não encontrado.</p>";
   }
 }
 carregarPerfil();
@@ -60,6 +76,7 @@ const chatBox = document.getElementById("chatBox");
 msgForm.addEventListener("submit", async (e) => {
   e.preventDefault();
   const text = document.getElementById("msgInput").value;
+  if (text.trim() === "") return;
   await addDoc(collection(db, "messages"), { senderId: userId, text, timestamp: serverTimestamp() });
   msgForm.reset();
 });
@@ -70,8 +87,10 @@ onSnapshot(msgQuery, snapshot => {
   snapshot.forEach(doc => {
     const data = doc.data();
     const div = document.createElement("div");
-    div.textContent = `${data.senderId}: ${data.text}`;
+    div.classList.add("chat-message", data.senderId === userId ? "sent" : "received");
+    div.innerHTML = `<span class="message-text">${data.text}</span>`;
     chatBox.appendChild(div);
+    chatBox.scrollTop = chatBox.scrollHeight; // Rola para o final da conversa
   });
 });
 
@@ -82,9 +101,13 @@ onSnapshot(storiesQuery, snapshot => {
   storiesBox.innerHTML = "";
   snapshot.forEach(doc => {
     const data = doc.data();
-    const div = document.createElement("div");
-    div.innerHTML = `<p>${data.userId} story</p>`;
-    storiesBox.appendChild(div);
+    const storyDiv = document.createElement("div");
+    storyDiv.classList.add("story-item");
+    storyDiv.innerHTML = `
+      <img src="https://via.placeholder.com/60" alt="Story de ${data.userId}">
+      <span class="story-user-name">${data.userId}</span>
+    `;
+    storiesBox.appendChild(storyDiv);
   });
 });
 
@@ -96,7 +119,8 @@ onSnapshot(groupsQuery, snapshot => {
   snapshot.forEach(doc => {
     const data = doc.data();
     const div = document.createElement("div");
-    div.innerHTML = `<p>${data.name}</p>`;
+    div.classList.add("group-item");
+    div.innerHTML = `<span class="group-name">${data.name}</span>`;
     groupsBox.appendChild(div);
   });
 });
@@ -105,18 +129,28 @@ onSnapshot(groupsQuery, snapshot => {
 const searchInput = document.getElementById("searchInput");
 const results = document.getElementById("results");
 
-searchInput.addEventListener("input", async () => {
+let allUsers = [];
+const usersCol = collection(db, "users");
+
+// Carrega os usuários uma única vez e mantém o listener ativo
+onSnapshot(usersCol, snapshot => {
+  allUsers = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+  filterAndRenderUsers();
+});
+
+searchInput.addEventListener("input", () => {
+  filterAndRenderUsers();
+});
+
+function filterAndRenderUsers() {
   const qText = searchInput.value.toLowerCase();
   results.innerHTML = "";
-  const usersCol = collection(db, "users");
-  onSnapshot(usersCol, snapshot => {
-    snapshot.forEach(doc => {
-      const data = doc.data();
-      if (data.name.toLowerCase().includes(qText)) {
-        const div = document.createElement("div");
-        div.textContent = data.name;
-        results.appendChild(div);
-      }
-    });
+  const filteredUsers = allUsers.filter(user => user.name.toLowerCase().includes(qText));
+  filteredUsers.forEach(user => {
+    const div = document.createElement("div");
+    div.classList.add("search-result-item");
+    div.textContent = user.name;
+    results.appendChild(div);
   });
-});
+}
+  
