@@ -8,7 +8,7 @@
 </head>
 <body class="bg-gray-100 p-4 min-h-screen">
     <div class="w-full max-w-2xl mx-auto bg-white rounded-lg shadow-xl p-6">
-        <header class="flex justify-between items-center mb-4">
+        <header class="flex justify-between items-center mb-6">
             <h1 class="text-2xl font-bold text-gray-800">Meu Perfil</h1>
             <nav class="space-x-4">
                 <a href="feed.html" class="text-blue-500 hover:text-blue-700">Feed</a>
@@ -17,30 +17,31 @@
         </header>
 
         <div class="profile-info text-center mb-6">
-            <img id="profile-image" src="https://via.placeholder.com/150" alt="Imagem de Perfil" class="w-32 h-32 rounded-full object-cover mx-auto mb-4">
+            <img id="profile-image" src="https://via.placeholder.com/150" alt="Imagem de Perfil" class="w-32 h-32 rounded-full object-cover mx-auto mb-4 border-2 border-blue-500">
             <div id="profile-name" class="text-xl font-bold">Carregando...</div>
         </div>
 
         <h2 class="text-xl font-semibold text-gray-800 mb-4">Atualizar Perfil</h2>
         <form id="profile-form" class="space-y-4 mb-6">
+            <label for="username-input" class="block font-medium text-gray-700">Nome de Usuário</label>
             <input type="text" id="username-input" placeholder="Seu nome de usuário" required class="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
-            <input type="url" id="image-url-input" placeholder="URL da sua foto de perfil" class="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
+            
+            <label for="profile-image-upload" class="block font-medium text-gray-700">Foto de Perfil</label>
+            <input type="file" id="profile-image-upload" accept="image/*" class="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
+            
             <button type="submit" class="w-full bg-blue-500 text-white font-bold py-2 px-4 rounded-lg hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-500">Salvar Perfil</button>
         </form>
 
-        <h2 class="text-xl font-semibold text-gray-800 mb-4">Adicionar Amigos</h2>
-        <input type="text" id="search-input" placeholder="Buscar usuários..." class="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 mb-4">
+        <h2 class="text-xl font-semibold text-gray-800 mb-4">Encontrar Pessoas</h2>
+        <input type="text" id="search-input" placeholder="Buscar por nome ou email..." class="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 mb-4">
         <ul id="user-list" class="bg-gray-50 rounded-lg p-2 space-y-2">
-            </ul>
-        
-        <h2 class="text-xl font-semibold text-gray-800 my-4">Minhas Amizades</h2>
-        <ul id="friends-list" class="bg-gray-50 rounded-lg p-2 space-y-2">
             </ul>
     </div>
     
     <script type="module" src="https://www.gstatic.com/firebasejs/10.4.0/firebase-app.js"></script>
     <script type="module" src="https://www.gstatic.com/firebasejs/10.4.0/firebase-firestore.js"></script>
     <script type="module" src="https://www.gstatic.com/firebasejs/10.4.0/firebase-auth.js"></script>
+    <script type="module" src="https://www.gstatic.com/firebasejs/10.4.0/firebase-storage.js"></script>
     <script type="module" src="script.js"></script>
 </body>
 </html>
