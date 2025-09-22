@@ -64,11 +64,30 @@
             border-radius: 20px;
             cursor: pointer;
         }
+
+        .top-bar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+
+        .top-bar a {
+            text-decoration: none;
+            background-color: #007BFF;
+            color: white;
+            padding: 8px 15px;
+            border-radius: 5px;
+            font-size: 0.9em;
+        }
     </style>
 </head>
 <body>
     <div class="chat-container">
-        <h1>Grupo Principal</h1>
+        <div class="top-bar">
+            <h1>Grupo Principal</h1>
+            <a href="profile.html">Meu Perfil</a>
+        </div>
         <div class="message-area" id="message-area">
             </div>
         <div class="input-area">
