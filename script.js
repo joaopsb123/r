@@ -1,5 +1,5 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
-import { getFirestore, collection, addDoc, query, orderBy, onSnapshot, serverTimestamp, doc, getDoc, updateDoc, arrayUnion, setDoc, where, getDocs, arrayRemove, deleteDoc, getDoc as getDocWithoutCache } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+import { getFirestore, collection, addDoc, query, orderBy, onSnapshot, serverTimestamp, doc, getDoc, updateDoc, arrayUnion, setDoc, where, getDocs, arrayRemove, deleteDoc } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 import { getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
 
 // Firebase config
@@ -252,7 +252,7 @@ function carregarFeed() {
       const data = doc.data();
       let userData = userMap.get(data.authorId);
       if (!userData) {
-        const userDoc = await getDocWithoutCache(doc(db, "users", data.authorId));
+        const userDoc = await getDoc(doc(db, "users", data.authorId));
         userData = userDoc.data();
         userMap.set(data.authorId, userData);
       }
@@ -354,7 +354,7 @@ function carregarStories() {
       const story = d.data();
       if (story.expiresAt > now) {
         if (!uniqueAuthors.has(story.authorId)) {
-          const userDoc = await getDocWithoutCache(doc(db, "users", story.authorId));
+          const userDoc = await getDoc(doc(db, "users", story.authorId));
           const userData = userDoc.data();
           uniqueAuthors.set(story.authorId, {
             ...userData,
@@ -388,7 +388,7 @@ function mostrarPerfil(targetUserId) {
 
 async function carregarPerfil(targetUserId) {
   const userRef = doc(db, "users", targetUserId);
-  const userSnap = await getDocWithoutCache(userRef);
+  const userSnap = await getDoc(userRef);
 
   if (!userSnap.exists()) {
     profileHeader.innerHTML = "<p>Utilizador não encontrado.</p>";
@@ -475,7 +475,7 @@ async function carregarPerfil(targetUserId) {
 
 async function editarPerfil() {
   const userRef = doc(db, "users", userId);
-  const userSnap = await getDocWithoutCache(userRef);
+  const userSnap = await getDoc(userRef);
   const userData = userSnap.data();
   const newName = prompt("Introduza o seu novo nome:", userData.name);
   const newBio = prompt("Introduza a sua nova biografia:", userData.bio);
@@ -543,4 +543,6 @@ function carregarMensagensPublicas() {
 function carregarDmUserList() {
     dmUserList.innerHTML = "";
     const usersQuery = query(collection(db, "users"));
-    onSnapshot
+    onSnapshot(usersQuery, (snapshot) => {
+        snapshot.forEach(doc => {
+            con
