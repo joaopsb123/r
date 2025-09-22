@@ -1,6 +1,7 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
-import { getFirestore, collection, addDoc, query, orderBy, onSnapshot, serverTimestamp, doc, getDoc, updateDoc, arrayUnion, setDoc } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+import { getFirestore, collection, addDoc, query, orderBy, onSnapshot, serverTimestamp, doc, getDoc, updateDoc, arrayUnion, setDoc, where } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 import { getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
+import { getStorage, ref, uploadBytes, getDownloadURL } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-storage.js";
 
 // Firebase config
 const firebaseConfig = {
@@ -17,8 +18,9 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 const auth = getAuth(app);
+const storage = getStorage(app); // Inicializa o serviço de armazenamento
 
-let userId; // Variável para guardar o ID do utilizador logado
+let userId;
 
 // ---------- UI ELEMENTS ----------
 const authSection = document.getElementById("auth");
@@ -28,18 +30,16 @@ const authBtn = document.getElementById("authBtn");
 const toggleAuthLink = document.getElementById("toggleAuth");
 const logoutBtn = document.getElementById("logoutBtn");
 
-let isLoginMode = true; // Estado para alternar entre login e registo
+let isLoginMode = true;
 
 // ---------- AUTENTICAÇÃO E INICIALIZAÇÃO ----------
 onAuthStateChanged(auth, async (user) => {
   if (user) {
-    // Utilizador logado
     userId = user.uid;
     console.log("Utilizador autenticado:", userId);
     authSection.style.display = "none";
     appSection.style.display = "block";
 
-    // Carrega os dados após a autenticação
     carregarPerfil();
     carregarFeed();
     carregarMensagens();
@@ -47,13 +47,11 @@ onAuthStateChanged(auth, async (user) => {
     carregarGrupos();
     carregarPesquisa();
   } else {
-    // Nenhum utilizador logado, mostra a tela de autenticação
     authSection.style.display = "block";
     appSection.style.display = "none";
   }
 });
 
-// Lidar com o envio do formulário de autenticação
 authForm.addEventListener("submit", async (e) => {
   e.preventDefault();
   const email = document.getElementById("email").value;
@@ -64,12 +62,12 @@ authForm.addEventListener("submit", async (e) => {
       await signInWithEmailAndPassword(auth, email, password);
       console.log("Login bem-sucedido!");
     } else {
-      await createUserWithEmailAndPassword(auth, email, password);
-      // Cria o documento de utilizador no Firestore após o registo
-      await setDoc(doc(db, "users", auth.currentUser.uid), {
-        name: email.split('@')[0], // Nome padrão
+      const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+      await setDoc(doc(db, "users", userCredential.user.uid), {
+        name: email.split('@')[0],
         bio: "",
-        following: []
+        following: [],
+        followers: []
       });
       console.log("Registo bem-sucedido!");
     }
@@ -79,43 +77,55 @@ authForm.addEventListener("submit", async (e) => {
   }
 });
 
-// Alternar entre login e registo
 toggleAuthLink.addEventListener("click", (e) => {
   e.preventDefault();
   isLoginMode = !isLoginMode;
   if (isLoginMode) {
     authBtn.textContent = "Entrar";
     toggleAuthLink.textContent = "Criar conta";
-    document.querySelector('.auth-toggle').innerHTML = 'Não tem uma conta? <a href="#" id="toggleAuth">Criar conta</a>';
   } else {
     authBtn.textContent = "Criar conta";
     toggleAuthLink.textContent = "Entrar";
-    document.querySelector('.auth-toggle').innerHTML = 'Já tem uma conta? <a href="#" id="toggleAuth">Entrar</a>';
   }
 });
 
-// Botão de Logout
 logoutBtn.addEventListener("click", async () => {
   await signOut(auth);
   console.log("Sessão terminada.");
 });
 
-// ---------- FEED ----------
+// ---------- FEED (AGORA COM FOTOS) ----------
 const postForm = document.getElementById("postForm");
 const feedPosts = document.getElementById("feedPosts");
 
 postForm.addEventListener("submit", async (e) => {
   e.preventDefault();
   const caption = document.getElementById("caption").value;
-  if (caption.trim() === "") return;
-  await addDoc(collection(db, "posts"), {
-    caption,
-    createdAt: serverTimestamp(),
-    authorId: userId,
-    likes: [],
-    comments: []
-  });
-  postForm.reset();
+  const imageFile = document.getElementById("postImage").files[0];
+  if (!caption && !imageFile) return;
+
+  try {
+    let imageUrl = null;
+    if (imageFile) {
+      const storageRef = ref(storage, `images/${Date.now()}_${imageFile.name}`);
+      const snapshot = await uploadBytes(storageRef, imageFile);
+      imageUrl = await getDownloadURL(snapshot.ref);
+    }
+
+    await addDoc(collection(db, "posts"), {
+      caption,
+      imageUrl,
+      createdAt: serverTimestamp(),
+      authorId: userId,
+      likes: [],
+      comments: []
+    });
+    postForm.reset();
+    alert("Post publicado!");
+  } catch (error) {
+    console.error("Erro ao publicar post:", error);
+    alert("Erro ao publicar post.");
+  }
 });
 
 function carregarFeed() {
@@ -132,6 +142,7 @@ function carregarFeed() {
           <span class="user-name">@${data.authorId}</span>
           <span class="post-time">${formattedTime}</span>
         </div>
+        ${data.imageUrl ? `<img src="${data.imageUrl}" class="post-image" alt="Imagem do post">` : ''}
         <p class="post-caption">${data.caption}</p>
         <div class="post-actions">
           <button class="like-btn" data-postid="${doc.id}">
@@ -171,40 +182,74 @@ function carregarFeed() {
   });
 }
 
-// ---------- PERFIL (CORRIGIDO) ----------
+// ---------- PERFIL (COMPLETO) ----------
 const profileInfo = document.getElementById("profileInfo");
+const myPhotosGrid = document.getElementById("myPhotos");
 async function carregarPerfil() {
-  const ref = doc(db, "users", userId);
-  const snap = await getDoc(ref);
-  if (snap.exists()) {
-    const data = snap.data();
-    profileInfo.innerHTML = `
-      <div class="profile-header">
-        <img class="profile-pic" src="https://via.placeholder.com/150" alt="Foto de Perfil">
-        <h2 class="profile-name">${data.name}</h2>
-      </div>
-      <p class="profile-bio">${data.bio}</p>
-      <button onclick="editarPerfil()" class="edit-profile-btn">Editar Perfil</button>
-    `;
-  } else {
-    // Se o documento não existir, cria um vazio para ser editado
-    await setDoc(doc(db, "users", userId), { name: "Novo Utilizador", bio: "Sem biografia", following: [] });
-    carregarPerfil(); // Recarrega o perfil
+  const userRef = doc(db, "users", userId);
+  const userSnap = await getDoc(userRef);
+
+  // Garantir que o documento de utilizador existe
+  if (!userSnap.exists()) {
+    await setDoc(userRef, { name: auth.currentUser.email.split('@')[0], bio: "", following: [], followers: [] });
+    carregarPerfil();
+    return;
   }
+
+  const userData = userSnap.data();
+  const creationDate = new Date(auth.currentUser.metadata.creationTime).toLocaleDateString();
+
+  profileInfo.innerHTML = `
+    <div class="profile-header">
+      <img class="profile-pic" src="https://via.placeholder.com/150" alt="Foto de Perfil">
+      <h2 class="profile-name">${userData.name}</h2>
+    </div>
+    <p class="profile-bio">${userData.bio}</p>
+    <div class="profile-stats">
+      <span><strong>${userData.following?.length || 0}</strong> a seguir</span>
+      <span><strong>${userData.followers?.length || 0}</strong> seguidores</span>
+    </div>
+    <div class="profile-meta">
+      <p>Membro desde: ${creationDate}</p>
+    </div>
+    <button onclick="editarPerfil()" class="edit-profile-btn">Editar Perfil</button>
+  `;
+
+  // Carregar as fotos do utilizador
+  carregarMinhasFotos();
 }
 
 async function editarPerfil() {
-  const newName = prompt("Introduza o seu novo nome:");
-  const newBio = prompt("Introduza a sua nova biografia:");
+  const userRef = doc(db, "users", userId);
+  const userSnap = await getDoc(userRef);
+  const userData = userSnap.data();
+
+  const newName = prompt("Introduza o seu novo nome:", userData.name);
+  const newBio = prompt("Introduza a sua nova biografia:", userData.bio);
   
   if (newName !== null && newBio !== null) {
-    const userRef = doc(db, "users", userId);
-    await setDoc(userRef, {
+    await updateDoc(userRef, {
       name: newName,
       bio: newBio
-    }, { merge: true }); // 'merge: true' para não apagar outros campos como 'following'
-    carregarPerfil(); // Recarrega o perfil para mostrar a alteração
+    });
+    carregarPerfil();
   }
+}
+
+function carregarMinhasFotos() {
+  const myPostsQuery = query(collection(db, "posts"), where("authorId", "==", userId), orderBy("createdAt", "desc"));
+  onSnapshot(myPostsQuery, (snapshot) => {
+    myPhotosGrid.innerHTML = "";
+    snapshot.forEach((doc) => {
+      const data = doc.data();
+      if (data.imageUrl) {
+        const img = document.createElement("img");
+        img.src = data.imageUrl;
+        img.classList.add("my-photo");
+        myPhotosGrid.appendChild(img);
+      }
+    });
+  });
 }
 
 // ---------- MENSAGENS ----------
@@ -235,42 +280,7 @@ function carregarMensagens() {
   });
 }
 
-// ---------- STORIES ----------
-const storiesBox = document.getElementById("storiesBox");
-function carregarStories() {
-  const storiesQuery = query(collection(db, "stories"), orderBy("expiresAt", "desc"));
-  onSnapshot(storiesQuery, snapshot => {
-    storiesBox.innerHTML = "";
-    snapshot.forEach(doc => {
-      const data = doc.data();
-      const storyDiv = document.createElement("div");
-      storyDiv.classList.add("story-item");
-      storyDiv.innerHTML = `
-        <img src="https://via.placeholder.com/60" alt="Story de ${data.userId}">
-        <span class="story-user-name">${data.userId}</span>
-      `;
-      storiesBox.appendChild(storyDiv);
-    });
-  });
-}
-
-// ---------- GRUPOS ----------
-const groupsBox = document.getElementById("groupsBox");
-function carregarGrupos() {
-  const groupsQuery = query(collection(db, "groups"));
-  onSnapshot(groupsQuery, snapshot => {
-    groupsBox.innerHTML = "";
-    snapshot.forEach(doc => {
-      const data = doc.data();
-      const div = document.createElement("div");
-      div.classList.add("group-item");
-      div.innerHTML = `<span class="group-name">${data.name}</span>`;
-      groupsBox.appendChild(div);
-    });
-  });
-}
-
-// ---------- PESQUISA (COM BOTÃO DE SEGUIR) ----------
+// ---------- PESQUISA (COM SEGUIR/DEIXAR DE SEGUIR) ----------
 const searchInput = document.getElementById("searchInput");
 const results = document.getElementById("results");
 
@@ -294,9 +304,15 @@ function filterAndRenderUsers() {
   filteredUsers.forEach(user => {
     const div = document.createElement("div");
     div.classList.add("search-result-item");
+    
+    // Verifica se o utilizador já segue
+    const isFollowing = allUsers.find(u => u.id === userId)?.following?.includes(user.id);
+    const btnText = isFollowing ? "A seguir" : "Seguir";
+    const btnClass = isFollowing ? "unfollow-btn" : "follow-btn";
+
     div.innerHTML = `
       <span>${user.name}</span>
-      <button class="follow-btn" data-userid="${user.id}">Seguir</button>
+      <button class="${btnClass}" data-userid="${user.id}">${btnText}</button>
     `;
     results.appendChild(div);
   });
@@ -305,15 +321,59 @@ function filterAndRenderUsers() {
     btn.addEventListener('click', async (e) => {
       const userToFollowId = e.target.dataset.userid;
       await seguirUtilizador(userToFollowId);
-      alert(`Você começou a seguir ${userToFollowId}!`);
+    });
+  });
+
+  document.querySelectorAll('.unfollow-btn').forEach(btn => {
+    btn.addEventListener('click', async (e) => {
+      const userToUnfollowId = e.target.dataset.userid;
+      await deixarDeSeguirUtilizador(userToUnfollowId);
     });
   });
 }
 
 async function seguirUtilizador(userToFollowId) {
   const userRef = doc(db, "users", userId);
-  await updateDoc(userRef, {
-    following: arrayUnion(userToFollowId)
+  const userToFollowRef = doc(db, "users", userToFollowId);
+  await updateDoc(userRef, { following: arrayUnion(userToFollowId) });
+  await updateDoc(userToFollowRef, { followers: arrayUnion(userId) });
+}
+
+async function deixarDeSeguirUtilizador(userToUnfollowId) {
+  const userRef = doc(db, "users", userId);
+  const userToUnfollowRef = doc(db, "users", userToUnfollowId);
+  // Remove o ID dos arrays
+  await updateDoc(userRef, { following: arrayRemove(userToUnfollowId) });
+  await updateDoc(userToUnfollowRef, { followers: arrayRemove(userId) });
+}
+
+// ... Outras funções (stories, grupos, mensagens)
+const storiesBox = document.getElementById("storiesBox");
+function carregarStories() {
+  const storiesQuery = query(collection(db, "stories"), orderBy("expiresAt", "desc"));
+  onSnapshot(storiesQuery, snapshot => {
+    storiesBox.innerHTML = "";
+    snapshot.forEach(doc => {
+      const data = doc.data();
+      const storyDiv = document.createElement("div");
+      storyDiv.classList.add("story-item");
+      storyDiv.innerHTML = `<img src="https://via.placeholder.com/60" alt="Story de ${data.userId}"><span class="story-user-name">${data.userId}</span>`;
+      storiesBox.appendChild(storyDiv);
+    });
   });
-                         }
-    
+}
+const groupsBox = document.getElementById("groupsBox");
+function carregarGrupos() {
+  const groupsQuery = query(collection(db, "groups"));
+  onSnapshot(groupsQuery, snapshot => {
+    groupsBox.innerHTML = "";
+    snapshot.forEach(doc => {
+      const data = doc.data();
+      const div = document.createElement("div");
+      div.classList.add("group-item");
+      div.innerHTML = `<span class="group-name">${data.name}</span>`;
+      groupsBox.appendChild(div);
+    });
+  });
+    }
+                                                                      
