@@ -1,6 +1,6 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
-import { getFirestore, collection, addDoc, query, orderBy, onSnapshot, serverTimestamp, doc, getDoc, updateDoc, arrayUnion } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
-import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
+import { getFirestore, collection, addDoc, query, orderBy, onSnapshot, serverTimestamp, doc, getDoc, updateDoc, arrayUnion, setDoc } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+import { getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
 
 // Firebase config
 const firebaseConfig = {
@@ -20,11 +20,25 @@ const auth = getAuth(app);
 
 let userId; // Variável para guardar o ID do utilizador logado
 
+// ---------- UI ELEMENTS ----------
+const authSection = document.getElementById("auth");
+const appSection = document.getElementById("app");
+const authForm = document.getElementById("authForm");
+const authBtn = document.getElementById("authBtn");
+const toggleAuthLink = document.getElementById("toggleAuth");
+const logoutBtn = document.getElementById("logoutBtn");
+
+let isLoginMode = true; // Estado para alternar entre login e registo
+
 // ---------- AUTENTICAÇÃO E INICIALIZAÇÃO ----------
 onAuthStateChanged(auth, async (user) => {
   if (user) {
+    // Utilizador logado
     userId = user.uid;
     console.log("Utilizador autenticado:", userId);
+    authSection.style.display = "none";
+    appSection.style.display = "block";
+
     // Carrega os dados após a autenticação
     carregarPerfil();
     carregarFeed();
@@ -33,12 +47,57 @@ onAuthStateChanged(auth, async (user) => {
     carregarGrupos();
     carregarPesquisa();
   } else {
-    try {
-      await signInAnonymously(auth);
-    } catch (error) {
-      console.error("Erro ao autenticar anonimamente:", error);
-    }
+    // Nenhum utilizador logado, mostra a tela de autenticação
+    authSection.style.display = "block";
+    appSection.style.display = "none";
   }
+});
+
+// Lidar com o envio do formulário de autenticação
+authForm.addEventListener("submit", async (e) => {
+  e.preventDefault();
+  const email = document.getElementById("email").value;
+  const password = document.getElementById("password").value;
+
+  try {
+    if (isLoginMode) {
+      await signInWithEmailAndPassword(auth, email, password);
+      console.log("Login bem-sucedido!");
+    } else {
+      await createUserWithEmailAndPassword(auth, email, password);
+      // Cria o documento de utilizador no Firestore após o registo
+      await setDoc(doc(db, "users", auth.currentUser.uid), {
+        name: email.split('@')[0], // Nome padrão
+        bio: "",
+        following: []
+      });
+      console.log("Registo bem-sucedido!");
+    }
+  } catch (error) {
+    console.error("Erro de autenticação:", error.message);
+    alert(`Erro de autenticação: ${error.message}`);
+  }
+});
+
+// Alternar entre login e registo
+toggleAuthLink.addEventListener("click", (e) => {
+  e.preventDefault();
+  isLoginMode = !isLoginMode;
+  if (isLoginMode) {
+    authBtn.textContent = "Entrar";
+    toggleAuthLink.textContent = "Criar conta";
+    document.querySelector('.auth-toggle').innerHTML = 'Não tem uma conta? <a href="#" id="toggleAuth">Criar conta</a>';
+  } else {
+    authBtn.textContent = "Criar conta";
+    toggleAuthLink.textContent = "Entrar";
+    document.querySelector('.auth-toggle').innerHTML = 'Já tem uma conta? <a href="#" id="toggleAuth">Entrar</a>';
+  }
+});
+
+// Botão de Logout
+logoutBtn.addEventListener("click", async () => {
+  await signOut(auth);
+  console.log("Sessão terminada.");
 });
 
 // ---------- FEED ----------
@@ -112,7 +171,7 @@ function carregarFeed() {
   });
 }
 
-// ---------- PERFIL (AJUSTADO) ----------
+// ---------- PERFIL (CORRIGIDO) ----------
 const profileInfo = document.getElementById("profileInfo");
 async function carregarPerfil() {
   const ref = doc(db, "users", userId);
@@ -128,22 +187,27 @@ async function carregarPerfil() {
       <button onclick="editarPerfil()" class="edit-profile-btn">Editar Perfil</button>
     `;
   } else {
-    profileInfo.innerHTML = "<p class='profile-not-found'>Utilizador não encontrado. Crie um documento com o seu ID.</p>";
+    // Se o documento não existir, cria um vazio para ser editado
+    await setDoc(doc(db, "users", userId), { name: "Novo Utilizador", bio: "Sem biografia", following: [] });
+    carregarPerfil(); // Recarrega o perfil
   }
 }
 
 async function editarPerfil() {
-  const newBio = prompt("Introduza a nova biografia:");
-  if (newBio !== null) {
+  const newName = prompt("Introduza o seu novo nome:");
+  const newBio = prompt("Introduza a sua nova biografia:");
+  
+  if (newName !== null && newBio !== null) {
     const userRef = doc(db, "users", userId);
-    await updateDoc(userRef, {
+    await setDoc(userRef, {
+      name: newName,
       bio: newBio
-    });
+    }, { merge: true }); // 'merge: true' para não apagar outros campos como 'following'
     carregarPerfil(); // Recarrega o perfil para mostrar a alteração
   }
 }
 
-// ---------- MENSAGENS (CORRIGIDO) ----------
+// ---------- MENSAGENS ----------
 const msgForm = document.getElementById("msgForm");
 const chatBox = document.getElementById("chatBox");
 
@@ -206,7 +270,7 @@ function carregarGrupos() {
   });
 }
 
-// ---------- PESQUISA (AGORA COM BOTÃO DE SEGUIR) ----------
+// ---------- PESQUISA (COM BOTÃO DE SEGUIR) ----------
 const searchInput = document.getElementById("searchInput");
 const results = document.getElementById("results");
 
@@ -226,7 +290,7 @@ searchInput.addEventListener("input", () => {
 function filterAndRenderUsers() {
   const qText = searchInput.value.toLowerCase();
   results.innerHTML = "";
-  const filteredUsers = allUsers.filter(user => user.name.toLowerCase().includes(qText) && user.id !== userId);
+  const filteredUsers = allUsers.filter(user => user.name?.toLowerCase().includes(qText) && user.id !== userId);
   filteredUsers.forEach(user => {
     const div = document.createElement("div");
     div.classList.add("search-result-item");
@@ -237,7 +301,6 @@ function filterAndRenderUsers() {
     results.appendChild(div);
   });
   
-  // Adiciona listeners aos botões de seguir
   document.querySelectorAll('.follow-btn').forEach(btn => {
     btn.addEventListener('click', async (e) => {
       const userToFollowId = e.target.dataset.userid;
@@ -252,4 +315,5 @@ async function seguirUtilizador(userToFollowId) {
   await updateDoc(userRef, {
     following: arrayUnion(userToFollowId)
   });
-}
+                         }
+    
