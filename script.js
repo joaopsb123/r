@@ -1,5 +1,5 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
-import { getFirestore, collection, addDoc, query, orderBy, onSnapshot, serverTimestamp, doc, getDoc } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+import { getFirestore, collection, addDoc, query, orderBy, onSnapshot, serverTimestamp, doc, getDoc, updateDoc, arrayUnion } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 
 // Firebase config
 const firebaseConfig = {
@@ -16,15 +16,22 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 
-// ---------- FEED ----------
+// ---------- FEED (CORRIGIDO E ADICIONADO LIKES/COMENTÁRIOS) ----------
 const postForm = document.getElementById("postForm");
 const feedPosts = document.getElementById("feedPosts");
+const userId = "meuUserId"; // ID fixo para exemplo, em app real, seria dinâmico
 
 postForm.addEventListener("submit", async (e) => {
   e.preventDefault();
   const caption = document.getElementById("caption").value;
   if (caption.trim() === "") return;
-  await addDoc(collection(db, "posts"), { caption, createdAt: serverTimestamp() });
+  await addDoc(collection(db, "posts"), {
+    caption,
+    createdAt: serverTimestamp(),
+    authorId: userId, // Adicionado autor para identificação
+    likes: [], // Array para guardar os IDs dos utilizadores que gostaram
+    comments: [] // Array para guardar os comentários
+  });
   postForm.reset();
 });
 
@@ -38,19 +45,52 @@ onSnapshot(feedQuery, snapshot => {
     div.classList.add("post-card");
     div.innerHTML = `
       <div class="post-header">
-        <span class="user-name">Usuário Anônimo</span>
+        <span class="user-name">@${data.authorId}</span>
         <span class="post-time">${formattedTime}</span>
       </div>
       <p class="post-caption">${data.caption}</p>
+      <div class="post-actions">
+        <button class="like-btn" data-postid="${doc.id}">
+          ❤️ ${data.likes?.length || 0}
+        </button>
+        <button class="comment-btn" data-postid="${doc.id}">
+          💬 Comentar
+        </button>
+      </div>
+      <div class="comments-section">
+        ${data.comments.map(c => `<p class="comment-text"><strong>${c.authorId}</strong>: ${c.text}</p>`).join('')}
+      </div>
     `;
     feedPosts.appendChild(div);
   });
+  
+  // Adiciona listeners para os botões de like e comentário
+  document.querySelectorAll('.like-btn').forEach(btn => {
+    btn.addEventListener('click', async (e) => {
+      const postId = e.currentTarget.dataset.postid;
+      const postRef = doc(db, "posts", postId);
+      await updateDoc(postRef, {
+        likes: arrayUnion(userId) // Adiciona o ID do utilizador ao array de likes
+      });
+    });
+  });
+
+  document.querySelectorAll('.comment-btn').forEach(btn => {
+    btn.addEventListener('click', (e) => {
+      const postId = e.currentTarget.dataset.postid;
+      const commentText = prompt("Escreva o seu comentário:");
+      if (commentText) {
+        const postRef = doc(db, "posts", postId);
+        updateDoc(postRef, {
+          comments: arrayUnion({ authorId: userId, text: commentText, timestamp: serverTimestamp() })
+        });
+      }
+    });
+  });
 });
 
-// ---------- PERFIL ----------
+// ---------- PERFIL (AJUSTADO) ----------
 const profileInfo = document.getElementById("profileInfo");
-const userId = "meuUserId"; // exemplo fixo - em uma aplicação real, este ID seria do usuário logado
-
 async function carregarPerfil() {
   const ref = doc(db, "users", userId);
   const snap = await getDoc(ref);
@@ -64,12 +104,12 @@ async function carregarPerfil() {
       <p class="profile-bio">${data.bio}</p>
     `;
   } else {
-    profileInfo.innerHTML = "<p class='profile-not-found'>Utilizador não encontrado.</p>";
+    profileInfo.innerHTML = "<p class='profile-not-found'>Utilizador não encontrado. Verifique se o documento 'meuUserId' existe na sua coleção 'users'.</p>";
   }
 }
 carregarPerfil();
 
-// ---------- MENSAGENS (CÓDIGO CORRIGIDO) ----------
+// ---------- MENSAGENS (CORRIGIDO) ----------
 const msgForm = document.getElementById("msgForm");
 const chatBox = document.getElementById("chatBox");
 
@@ -77,6 +117,8 @@ msgForm.addEventListener("submit", async (e) => {
   e.preventDefault();
   const text = document.getElementById("msgInput").value;
   if (text.trim() === "") return;
+  // Para que as mensagens sejam privadas, é necessário ter um ID de conversa
+  // Exemplo: `doc(db, "conversations", "conversationId123")`
   await addDoc(collection(db, "messages"), { senderId: userId, text, timestamp: serverTimestamp() });
   msgForm.reset();
 });
@@ -90,12 +132,12 @@ onSnapshot(msgQuery, (snapshot) => {
       div.classList.add("chat-message", data.senderId === userId ? "sent" : "received");
       div.innerHTML = `<span class="message-text">${data.text}</span>`;
       chatBox.appendChild(div);
-      chatBox.scrollTop = chatBox.scrollHeight; // Rola para o final da conversa
+      chatBox.scrollTop = chatBox.scrollHeight;
     }
   });
 });
 
-// ---------- STORIES ----------
+// ---------- STORIES (SEM ALTERAÇÕES) ----------
 const storiesBox = document.getElementById("storiesBox");
 const storiesQuery = query(collection(db, "stories"), orderBy("expiresAt", "desc"));
 onSnapshot(storiesQuery, snapshot => {
@@ -112,7 +154,7 @@ onSnapshot(storiesQuery, snapshot => {
   });
 });
 
-// ---------- GRUPOS ----------
+// ---------- GRUPOS (SEM ALTERAÇÕES) ----------
 const groupsBox = document.getElementById("groupsBox");
 const groupsQuery = query(collection(db, "groups"));
 onSnapshot(groupsQuery, snapshot => {
@@ -126,14 +168,13 @@ onSnapshot(groupsQuery, snapshot => {
   });
 });
 
-// ---------- PESQUISA ----------
+// ---------- PESQUISA (SEM ALTERAÇÕES) ----------
 const searchInput = document.getElementById("searchInput");
 const results = document.getElementById("results");
 
 let allUsers = [];
 const usersCol = collection(db, "users");
 
-// Carrega os usuários uma única vez e mantém o listener ativo
 onSnapshot(usersCol, snapshot => {
   allUsers = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
   filterAndRenderUsers();
@@ -153,4 +194,4 @@ function filterAndRenderUsers() {
     div.textContent = user.name;
     results.appendChild(div);
   });
-}
+                                }
