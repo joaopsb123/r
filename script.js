@@ -179,8 +179,8 @@ function carregarNotificacoes() {
   onSnapshot(notifQuery, (snapshot) => {
     notificationList.innerHTML = "";
     let unreadCount = 0;
-    snapshot.forEach(doc => {
-      const data = doc.data();
+    snapshot.forEach(docSnap => {
+      const data = docSnap.data();
       const div = document.createElement("div");
       div.classList.add("notification-item");
       if (!data.read) {
@@ -248,8 +248,8 @@ function carregarFeed() {
   onSnapshot(feedQuery, async snapshot => {
     feedPosts.innerHTML = "";
     const userMap = new Map();
-    for (const doc of snapshot.docs) {
-      const data = doc.data();
+    for (const docSnap of snapshot.docs) {
+      const data = docSnap.data();
       let userData = userMap.get(data.authorId);
       if (!userData) {
         const userDoc = await getDoc(doc(db, "users", data.authorId));
@@ -269,19 +269,19 @@ function carregarFeed() {
             <span class="user-name" onclick="mostrarPerfil('${data.authorId}')">${userData.name}</span>
           </div>
           <span class="post-time">${formattedTime}</span>
-          ${isMyPost ? `<button class="delete-post-btn" data-postid="${doc.id}">🗑️</button>` : ''}
+          ${isMyPost ? `<button class="delete-post-btn" data-postid="${docSnap.id}">🗑️</button>` : ''}
         </div>
         ${data.imageUrl ? `<img src="${data.imageUrl}" class="post-image" alt="Imagem do post">` : ''}
         <p class="post-caption">${data.caption}</p>
         <div class="post-actions">
-          <button class="like-btn" data-postid="${doc.id}">
+          <button class="like-btn" data-postid="${docSnap.id}">
             ❤️ ${data.likes?.length || 0}
           </button>
-          <button class="comment-btn" data-postid="${doc.id}">
+          <button class="comment-btn" data-postid="${docSnap.id}">
             💬 Comentar
           </button>
         </div>
-        <div class="comments-section" id="comments-${doc.id}">
+        <div class="comments-section" id="comments-${docSnap.id}">
           ${data.comments.map(c => `<p class="comment-text"><strong>${c.authorId}</strong>: ${c.text}</p>`).join('')}
         </div>
       `;
@@ -291,17 +291,17 @@ function carregarFeed() {
       if (deleteBtn) {
         deleteBtn.addEventListener('click', async () => {
           if (confirm("Tem certeza que quer apagar esta publicação?")) {
-            await deleteDoc(doc(db, "posts", doc.id));
+            await deleteDoc(doc(db, "posts", docSnap.id));
           }
         });
       }
 
-      const commentBtn = div.querySelector(`.comment-btn[data-postid="${doc.id}"]`);
+      const commentBtn = div.querySelector(`.comment-btn[data-postid="${docSnap.id}"]`);
       if(commentBtn){
         commentBtn.addEventListener('click', () => {
           const commentText = prompt("Escreva o seu comentário:");
           if (commentText) {
-            const postRef = doc(db, "posts", doc.id);
+            const postRef = doc(db, "posts", docSnap.id);
             updateDoc(postRef, {
               comments: arrayUnion({ authorId: userId, text: commentText, timestamp: serverTimestamp() })
             });
@@ -328,7 +328,7 @@ async function uploadStory(file) {
     formData.append('upload_preset', CLOUDINARY_UPLOAD_PRESET);
     const response = await fetch(CLOUDINARY_URL, { method: 'POST', body: formData });
     const data = await response.json();
-    const expiresAt = new Date().getTime() + 86400000; // 24 horas em milisegundos
+    const expiresAt = new Date().getTime() + 86400000; // 24 horas
 
     await addDoc(collection(db, "stories"), {
       imageUrl: data.secure_url,
@@ -350,8 +350,8 @@ function carregarStories() {
     const now = new Date().getTime();
     const uniqueAuthors = new Map();
 
-    for (const d of snapshot.docs) {
-      const story = d.data();
+    for (const docSnap of snapshot.docs) {
+      const story = docSnap.data();
       if (story.expiresAt > now) {
         if (!uniqueAuthors.has(story.authorId)) {
           const userDoc = await getDoc(doc(db, "users", story.authorId));
@@ -379,7 +379,7 @@ function carregarStories() {
   });
 }
 
-// ---------- PERFIL (COMPLETO) ----------
+// ---------- PERFIL ----------
 function mostrarPerfil(targetUserId) {
   currentProfileId = targetUserId;
   mostrar('profile');
@@ -442,107 +442,3 @@ async function carregarPerfil(targetUserId) {
         await updateDoc(doc(db, "users", userId), { profilePicUrl: url });
         carregarPerfil(userId);
       }
-    });
-
-    document.getElementById('uploadStoryBtn').addEventListener('click', () => {
-        const fileInput = document.createElement('input');
-        fileInput.type = 'file';
-        fileInput.accept = 'image/*';
-        fileInput.onchange = (e) => {
-            if (e.target.files.length > 0) {
-                uploadStory(e.target.files[0]);
-            }
-        };
-        fileInput.click();
-    });
-
-  } else {
-    const followBtn = document.querySelector('.follow-btn');
-    if (followBtn) {
-      followBtn.addEventListener('click', async (e) => {
-        const userToFollowId = e.target.dataset.userid;
-        if (e.target.textContent === 'Seguir') {
-          await seguirUtilizador(userToFollowId);
-        } else {
-          await deixarDeSeguirUtilizador(userToFollowId);
-        }
-      });
-    }
-  }
-
-  carregarFotosDoUtilizador(targetUserId);
-}
-
-async function editarPerfil() {
-  const userRef = doc(db, "users", userId);
-  const userSnap = await getDoc(userRef);
-  const userData = userSnap.data();
-  const newName = prompt("Introduza o seu novo nome:", userData.name);
-  const newBio = prompt("Introduza a sua nova biografia:", userData.bio);
-  
-  if (newName !== null && newBio !== null) {
-    await updateDoc(userRef, { name: newName, bio: newBio });
-    carregarPerfil(userId);
-  }
-}
-
-function carregarFotosDoUtilizador(targetUserId) {
-  const userPostsQuery = query(collection(db, "posts"), where("authorId", "==", targetUserId), orderBy("createdAt", "desc"));
-  onSnapshot(userPostsQuery, (snapshot) => {
-    profilePhotos.innerHTML = "";
-    snapshot.forEach((doc) => {
-      const data = doc.data();
-      if (data.imageUrl) {
-        const img = document.createElement("img");
-        img.src = data.imageUrl;
-        img.classList.add("my-photo");
-        profilePhotos.appendChild(img);
-      }
-    });
-  });
-}
-
-// ---------- MENSAGENS PÚBLICAS E PRIVADAS ----------
-publicChatBtn.addEventListener('click', () => {
-    publicChatBtn.classList.add('active');
-    dmsBtn.classList.remove('active');
-    publicChatContainer.classList.add('active');
-    dmsContainer.classList.remove('active');
-});
-dmsBtn.addEventListener('click', () => {
-    dmsBtn.classList.add('active');
-    publicChatBtn.classList.remove('active');
-    publicChatContainer.classList.remove('active');
-    dmsContainer.classList.add('active');
-});
-
-publicMsgForm.addEventListener("submit", async (e) => {
-  e.preventDefault();
-  const text = document.getElementById("publicMsgInput").value;
-  if (text.trim() === "") return;
-  await addDoc(collection(db, "messages"), { senderId: userId, text, timestamp: serverTimestamp() });
-  publicMsgForm.reset();
-});
-
-function carregarMensagensPublicas() {
-  const msgQuery = query(collection(db, "messages"), orderBy("timestamp", "asc"));
-  onSnapshot(msgQuery, (snapshot) => {
-    snapshot.docChanges().forEach((change) => {
-      if (change.type === "added") {
-        const data = change.doc.data();
-        const div = document.createElement("div");
-        div.classList.add("chat-message", data.senderId === userId ? "sent" : "received");
-        div.innerHTML = `<span class="message-text">${data.text}</span>`;
-        publicChatBox.appendChild(div);
-        publicChatBox.scrollTop = publicChatBox.scrollHeight;
-      }
-    });
-  });
-}
-
-function carregarDmUserList() {
-    dmUserList.innerHTML = "";
-    const usersQuery = query(collection(db, "users"));
-    onSnapshot(usersQuery, (snapshot) => {
-        snapshot.forEach(doc => {
-            const userData 
