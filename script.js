@@ -69,7 +69,7 @@ async function carregarPerfil() {
 }
 carregarPerfil();
 
-// ---------- MENSAGENS ----------
+// ---------- MENSAGENS (CÓDIGO CORRIGIDO) ----------
 const msgForm = document.getElementById("msgForm");
 const chatBox = document.getElementById("chatBox");
 
@@ -82,15 +82,16 @@ msgForm.addEventListener("submit", async (e) => {
 });
 
 const msgQuery = query(collection(db, "messages"), orderBy("timestamp", "asc"));
-onSnapshot(msgQuery, snapshot => {
-  chatBox.innerHTML = "";
-  snapshot.forEach(doc => {
-    const data = doc.data();
-    const div = document.createElement("div");
-    div.classList.add("chat-message", data.senderId === userId ? "sent" : "received");
-    div.innerHTML = `<span class="message-text">${data.text}</span>`;
-    chatBox.appendChild(div);
-    chatBox.scrollTop = chatBox.scrollHeight; // Rola para o final da conversa
+onSnapshot(msgQuery, (snapshot) => {
+  snapshot.docChanges().forEach((change) => {
+    if (change.type === "added") {
+      const data = change.doc.data();
+      const div = document.createElement("div");
+      div.classList.add("chat-message", data.senderId === userId ? "sent" : "received");
+      div.innerHTML = `<span class="message-text">${data.text}</span>`;
+      chatBox.appendChild(div);
+      chatBox.scrollTop = chatBox.scrollHeight; // Rola para o final da conversa
+    }
   });
 });
 
@@ -153,4 +154,3 @@ function filterAndRenderUsers() {
     results.appendChild(div);
   });
 }
-  
