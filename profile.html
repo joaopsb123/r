@@ -4,55 +4,43 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Meu Perfil</title>
-    <style>
-        body { font-family: Arial, sans-serif; background-color: #f4f4f4; padding: 20px; }
-        .container { max-width: 800px; margin: auto; background-color: #fff; padding: 20px; border-radius: 10px; box-shadow: 0 0 10px rgba(0,0,0,0.1); }
-        h1, h2 { color: #333; }
-        .profile-info { text-align: center; }
-        #profile-image { width: 150px; height: 150px; border-radius: 50%; object-fit: cover; margin-bottom: 10px; border: 2px solid #ccc; }
-        #profile-name { font-size: 1.5em; font-weight: bold; }
-        input, button { width: 100%; padding: 10px; margin: 5px 0; border: 1px solid #ddd; border-radius: 5px; box-sizing: border-box; }
-        button { background-color: #4CAF50; color: white; cursor: pointer; border: none; }
-        button:hover { background-color: #45a049; }
-        ul { list-style-type: none; padding: 0; }
-        li { padding: 10px; border-bottom: 1px solid #ddd; display: flex; justify-content: space-between; align-items: center; }
-        li:last-child { border-bottom: none; }
-    </style>
+    <script src="https://cdn.tailwindcss.com"></script>
 </head>
-<body>
-    <div class="container">
-        <h1>Meu Perfil</h1>
+<body class="bg-gray-100 p-4 min-h-screen">
+    <div class="w-full max-w-2xl mx-auto bg-white rounded-lg shadow-xl p-6">
+        <header class="flex justify-between items-center mb-4">
+            <h1 class="text-2xl font-bold text-gray-800">Meu Perfil</h1>
+            <nav class="space-x-4">
+                <a href="feed.html" class="text-blue-500 hover:text-blue-700">Feed</a>
+                <a href="#" id="logout-button-profile" class="text-red-500 hover:text-red-700">Sair</a>
+            </nav>
+        </header>
 
-        <div class="profile-info">
-            <img id="profile-image" src="https://via.placeholder.com/150" alt="Imagem de Perfil">
-            <div id="profile-name">Carregando...</div>
+        <div class="profile-info text-center mb-6">
+            <img id="profile-image" src="https://via.placeholder.com/150" alt="Imagem de Perfil" class="w-32 h-32 rounded-full object-cover mx-auto mb-4">
+            <div id="profile-name" class="text-xl font-bold">Carregando...</div>
         </div>
 
-        ---
-
-        <h2>Atualizar Perfil</h2>
-        <form id="profile-form">
-            <input type="text" id="username-input" placeholder="Seu nome de usuário" required>
-            <input type="url" id="image-url-input" placeholder="URL da sua foto de perfil">
-            <button type="submit">Salvar Perfil</button>
+        <h2 class="text-xl font-semibold text-gray-800 mb-4">Atualizar Perfil</h2>
+        <form id="profile-form" class="space-y-4 mb-6">
+            <input type="text" id="username-input" placeholder="Seu nome de usuário" required class="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
+            <input type="url" id="image-url-input" placeholder="URL da sua foto de perfil" class="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
+            <button type="submit" class="w-full bg-blue-500 text-white font-bold py-2 px-4 rounded-lg hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-500">Salvar Perfil</button>
         </form>
 
-        ---
-
-        <h2>Adicionar Amigos</h2>
-        <input type="text" id="search-input" placeholder="Buscar usuários...">
-        <ul id="user-list">
+        <h2 class="text-xl font-semibold text-gray-800 mb-4">Adicionar Amigos</h2>
+        <input type="text" id="search-input" placeholder="Buscar usuários..." class="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 mb-4">
+        <ul id="user-list" class="bg-gray-50 rounded-lg p-2 space-y-2">
             </ul>
         
-        ---
-
-        <h2>Minhas Amizades</h2>
-        <ul id="friends-list">
+        <h2 class="text-xl font-semibold text-gray-800 my-4">Minhas Amizades</h2>
+        <ul id="friends-list" class="bg-gray-50 rounded-lg p-2 space-y-2">
             </ul>
     </div>
-
+    
     <script type="module" src="https://www.gstatic.com/firebasejs/10.4.0/firebase-app.js"></script>
     <script type="module" src="https://www.gstatic.com/firebasejs/10.4.0/firebase-firestore.js"></script>
+    <script type="module" src="https://www.gstatic.com/firebasejs/10.4.0/firebase-auth.js"></script>
     <script type="module" src="script.js"></script>
 </body>
 </html>
