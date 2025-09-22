@@ -1,3 +1,4 @@
+// =========================================================
 // A CONFIGURAÇÃO DO SEU FIREBASE
 // Substitua pelas suas chaves
 const firebaseConfig = {
@@ -11,58 +12,129 @@ const firebaseConfig = {
 };
 
 // =========================================================
-// INICIALIZAÇÃO E FUNÇÕES BÁSICAS DO FIREBASE
+// IMPORTS E INICIALIZAÇÃO DO FIREBASE
 // =========================================================
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.4.0/firebase-app.js";
-import { getFirestore, collection, addDoc, serverTimestamp, onSnapshot, query, orderBy, doc, getDoc, setDoc, updateDoc } from "https://www.gstatic.com/firebasejs/10.4.0/firebase-firestore.js";
+import { getFirestore, collection, addDoc, serverTimestamp, onSnapshot, query, orderBy, doc, setDoc } from "https://www.gstatic.com/firebasejs/10.4.0/firebase-firestore.js";
+import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.4.0/firebase-auth.js";
 
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
+const auth = getAuth(app);
 
 // =========================================================
-// MÓDULO: IDENTIFICAÇÃO DO USUÁRIO
+// REFERÊNCIAS DOS ELEMENTOS HTML
 // =========================================================
-// Pega um ID único do usuário do armazenamento local.
-// Se não existir, cria um novo. ISSO NÃO É UM SISTEMA DE LOGIN!
-function getUserId() {
-    let userId = localStorage.getItem('socialAppUserId');
-    if (!userId) {
-        userId = 'user_' + Math.random().toString(36).substring(2, 15);
-        localStorage.setItem('socialAppUserId', userId);
+const authView = document.getElementById('auth-view');
+const appView = document.getElementById('app-view');
+
+const registerForm = document.getElementById('register-form');
+const loginForm = document.getElementById('login-form');
+const logoutButton = document.getElementById('logout-button');
+
+const messageInput = document.getElementById('message-input');
+const sendButton = document.getElementById('send-button');
+const messageArea = document.getElementById('message-area');
+
+// =========================================================
+// GESTÃO DE AUTENTICAÇÃO E LÓGICA DO APP
+// =========================================================
+
+// Função que monitora o estado de autenticação do usuário
+onAuthStateChanged(auth, (user) => {
+    if (user) {
+        // Usuário está logado
+        authView.style.display = 'none';
+        appView.style.display = 'block';
+        console.log('Usuário logado:', user.uid);
+        // Inicia a lógica do chat (quando o usuário está logado)
+        startChatListener();
+    } else {
+        // Usuário não está logado
+        authView.style.display = 'block';
+        appView.style.display = 'none';
+        console.log('Nenhum usuário logado.');
     }
-    return userId;
-}
+});
 
-const currentUserId = getUserId();
+// Listener para o formulário de REGISTRO
+registerForm.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const email = registerForm['register-email'].value;
+    const password = registerForm['register-password'].value;
+
+    try {
+        const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+        console.log('Usuário registrado com sucesso!', userCredential.user.uid);
+        
+        // Cria um perfil inicial para o novo usuário no Firestore
+        await setDoc(doc(db, "users", userCredential.user.uid), {
+            name: email, // Usa o email como nome inicial
+            createdAt: serverTimestamp(),
+            uid: userCredential.user.uid
+        });
+
+    } catch (error) {
+        alert("Erro ao registrar: " + error.message);
+        console.error("Erro de registro:", error);
+    }
+});
+
+// Listener para o formulário de LOGIN
+loginForm.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const email = loginForm['login-email'].value;
+    const password = loginForm['login-password'].value;
+
+    try {
+        await signInWithEmailAndPassword(auth, email, password);
+        console.log('Usuário logado com sucesso!');
+    } catch (error) {
+        alert("Erro ao logar: " + error.message);
+        console.error("Erro de login:", error);
+    }
+});
+
+// Listener para o botão de LOGOUT
+logoutButton.addEventListener('click', async () => {
+    await signOut(auth);
+    console.log('Usuário desconectado.');
+});
 
 // =========================================================
-// MÓDULO: CHAT (EXISTENTE)
+// MÓDULO CHAT (ATUALIZADO)
 // =========================================================
-if (document.getElementById('message-area')) {
-    const messageInput = document.getElementById('message-input');
-    const sendButton = document.getElementById('send-button');
-    const messageArea = document.getElementById('message-area');
+let unsubscribeChat; // Variável para controlar o listener do chat
+
+function startChatListener() {
+    // Para o listener anterior se ele existir
+    if (unsubscribeChat) {
+        unsubscribeChat();
+    }
+    
+    // Limpa a área de mensagens
+    messageArea.innerHTML = '';
 
     const displayMessage = (message) => {
         const p = document.createElement('p');
         p.className = 'message';
-        // Adicionando o nome do usuário à mensagem
-        p.textContent = (message.userName ? message.userName + ': ' : '') + message.text;
+        // A mensagem agora inclui o nome do remetente
+        p.textContent = (message.userName || 'Anônimo') + ': ' + message.text;
         messageArea.appendChild(p);
         messageArea.scrollTop = messageArea.scrollHeight;
     };
 
-    // Ouvinte para o botão de enviar do chat
+    // Listener para o botão de enviar do chat
     sendButton.addEventListener('click', async () => {
         const text = messageInput.value.trim();
-        if (text) {
+        if (text && auth.currentUser) {
             try {
-                // Pega o nome do usuário antes de enviar
-                const userDoc = await getDoc(doc(db, "users", currentUserId));
-                const userName = userDoc.exists() ? userDoc.data().name : 'Anônimo';
+                // Pega o nome do usuário logado para a mensagem
+                const currentUserDoc = await getDoc(doc(db, "users", auth.currentUser.uid));
+                const userName = currentUserDoc.data()?.name || auth.currentUser.email;
 
                 await addDoc(collection(db, "messages"), {
-                    userId: currentUserId,
+                    userId: auth.currentUser.uid,
                     userName: userName,
                     text: text,
                     createdAt: serverTimestamp(),
@@ -74,9 +146,9 @@ if (document.getElementById('message-area')) {
         }
     });
 
-    // Ouvinte em tempo real para o chat
+    // Ouve as mensagens em tempo real
     const q = query(collection(db, "messages"), orderBy("createdAt"));
-    onSnapshot(q, (snapshot) => {
+    unsubscribeChat = onSnapshot(q, (snapshot) => {
         snapshot.docChanges().forEach((change) => {
             if (change.type === "added") {
                 displayMessage(change.doc.data());
@@ -84,118 +156,3 @@ if (document.getElementById('message-area')) {
         });
     });
 }
-
-// =========================================================
-// MÓDULO: PERFIL E AMIZADES
-// =========================================================
-if (document.getElementById('profile-form')) {
-    const profileForm = document.getElementById('profile-form');
-    const usernameInput = document.getElementById('username-input');
-    const imageUrlInput = document.getElementById('image-url-input');
-    const profileName = document.getElementById('profile-name');
-    const profileImage = document.getElementById('profile-image');
-    const userList = document.getElementById('user-list');
-    const friendsList = document.getElementById('friends-list');
-    const searchInput = document.getElementById('search-input');
-
-    // Carrega o perfil do usuário atual
-    const loadProfile = async () => {
-        const userDoc = await getDoc(doc(db, "users", currentUserId));
-        if (userDoc.exists()) {
-            const userData = userDoc.data();
-            profileName.textContent = userData.name || 'Nome não definido';
-            profileImage.src = userData.image || 'https://via.placeholder.com/150';
-            usernameInput.value = userData.name || '';
-            imageUrlInput.value = userData.image || '';
-        } else {
-            profileName.textContent = 'Novo Usuário';
-            profileImage.src = 'https://via.placeholder.com/150';
-        }
-        loadFriendsList();
-    };
-
-    // Salva o perfil
-    profileForm.addEventListener('submit', async (e) => {
-        e.preventDefault();
-        const userName = usernameInput.value;
-        const imageUrl = imageUrlInput.value || 'https://via.placeholder.com/150';
-        await setDoc(doc(db, "users", currentUserId), {
-            name: userName,
-            image: imageUrl,
-            id: currentUserId,
-        }, { merge: true }); // 'merge: true' garante que os dados existentes não sejam apagados
-        await loadProfile();
-        alert('Perfil salvo com sucesso!');
-    });
-
-    // Função para adicionar amigo
-    const addFriend = async (friendId) => {
-        const userDocRef = doc(db, "users", currentUserId);
-        const userDoc = await getDoc(userDocRef);
-        let friends = userDoc.data().friends || [];
-        if (!friends.includes(friendId)) {
-            friends.push(friendId);
-            await updateDoc(userDocRef, { friends: friends });
-            alert('Amigo adicionado!');
-            loadFriendsList(); // Atualiza a lista de amigos
-        }
-    };
-    
-    // Carrega a lista de amigos do usuário atual
-    const loadFriendsList = async () => {
-        const userDoc = await getDoc(doc(db, "users", currentUserId));
-        if (userDoc.exists() && userDoc.data().friends) {
-            const friendIds = userDoc.data().friends;
-            friendsList.innerHTML = '';
-            for (const friendId of friendIds) {
-                const friendDoc = await getDoc(doc(db, "users", friendId));
-                if (friendDoc.exists()) {
-                    const friendData = friendDoc.data();
-                    const li = document.createElement('li');
-                    li.textContent = friendData.name;
-                    friendsList.appendChild(li);
-                }
-            }
-        }
-    };
-
-    // Carrega a lista de todos os usuários para adicionar
-    const loadAllUsers = async (searchTerm = '') => {
-        userList.innerHTML = '';
-        const usersCol = collection(db, "users");
-        const q = query(usersCol);
-        const snapshot = await getDocs(q);
-        
-        snapshot.forEach((userDoc) => {
-            const userData = userDoc.data();
-            const userId = userDoc.id;
-            
-            // Não exibe o próprio usuário na lista
-            if (userId !== currentUserId) {
-                const userName = userData.name || 'Anônimo';
-                // Filtra por termo de busca
-                if (userName.toLowerCase().includes(searchTerm.toLowerCase())) {
-                    const li = document.createElement('li');
-                    li.innerHTML = `
-                        <span>${userName}</span>
-                        <button onclick="addFriend('${userId}')">Adicionar</button>
-                    `;
-                    userList.appendChild(li);
-                }
-            }
-        });
-    };
-    
-    // Adiciona o ouvinte para a busca de usuários
-    searchInput.addEventListener('input', (e) => {
-        loadAllUsers(e.target.value);
-    });
-
-    // Inicia tudo
-    loadProfile();
-    loadAllUsers();
-
-    // Exporta a função para o escopo global para o onclick
-    window.addFriend = addFriend;
-    }
-                                         
