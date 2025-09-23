@@ -496,7 +496,8 @@ async function carregarPerfil(targetUserId) {
         if (e.target.textContent === 'Seguir') {
           await seguirUtilizador(userToFollowId);
         } else {
-          await deixarDeSeguirUtilizador(userToUnfollowId);
+          // AQUI ESTÁ A CORREÇÃO
+          await deixarDeSeguirUtilizador(userToFollowId);
         }
       });
     }
@@ -550,5 +551,4 @@ dmsBtn.addEventListener('click', () => {
 
 publicMsgForm.addEventListener("submit", async (e) => {
   e.preventDefault();
-  const text = document.getElementById("publicMsgInput").value;
-  if (text.tri
+  const text = document.getElementById("public
