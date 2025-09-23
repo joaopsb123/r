@@ -1,124 +1,64 @@
 <!DOCTYPE html>
 <html lang="pt">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Minha Rede Social</title>
-    <link rel="stylesheet" href="style.css">
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Mini Discord</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/milligram/1.4.1/milligram.min.css">
+  <style>
+    body { margin: 0; }
+    #chat-container {
+      display: flex;
+      height: 100vh;
+    }
+    #servers {
+      width: 80px;
+      background: #2f3136;
+      color: white;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding-top: 1rem;
+    }
+    #channels {
+      width: 200px;
+      background: #36393f;
+      color: white;
+      padding: 1rem;
+    }
+    #messages {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      background: #40444b;
+      color: white;
+      padding: 1rem;
+    }
+    #msg-list {
+      flex: 1;
+      overflow-y: auto;
+      margin-bottom: 1rem;
+    }
+    input, button { width: 100%; }
+  </style>
 </head>
 <body>
+  <div id="chat-container">
+    <div id="servers">
+      <button onclick="selectServer('general')">#</button>
+    </div>
+    <div id="channels">
+      <h4>Canais</h4>
+      <button onclick="selectChannel('geral')"># geral</button>
+      <button onclick="selectChannel('random')"># random</button>
+    </div>
+    <div id="messages">
+      <div id="msg-list"></div>
+      <input type="text" id="msgInput" placeholder="Escreve uma mensagem...">
+      <button onclick="sendMessage()">Enviar</button>
+    </div>
+  </div>
 
-    <!-- AUTENTICAÇÃO -->
-    <section id="auth">
-        <h1>Bem-vindo!</h1>
-        <form id="authForm">
-            <input type="text" id="username" placeholder="Nome de Utilizador" style="display:none;">
-            <input type="email" id="email" placeholder="Email" required>
-            <input type="password" id="password" placeholder="Password" required>
-            <button type="submit" id="authBtn">Entrar</button>
-        </form>
-        <button type="button" id="googleAuthBtn" class="google-btn">Login com Google</button>
-        <a href="#" id="toggleAuth">Criar conta</a>
-    </section>
-
-    <!-- APP -->
-    <section id="app" style="display:none;">
-
-        <header class="top-nav">
-            <div class="logo">Minha Social</div>
-            <div class="user-actions">
-                <input type="text" id="searchInput" placeholder="Pesquisar utilizadores...">
-                <button id="notificationBtn">Notificações</button>
-                <button id="logoutBtn">Sair</button>
-            </div>
-        </header>
-        
-        <main class="main-content">
-            
-            <div id="storiesBox" class="stories-container"></div>
-            
-            <div id="mainContent">
-
-                <div id="feed" class="content-section">
-                    <h2>Feed de Notícias</h2>
-                    <form id="postForm" class="post-form">
-                        <textarea id="caption" placeholder="O que está a pensar?"></textarea>
-                        <input type="file" id="postImage" accept="image/*">
-                        <button type="submit">Publicar</button>
-                    </form>
-                    <div id="feedPosts" class="feed-posts-container"></div>
-                </div>
-
-                <div id="profile" class="content-section" style="display:none;">
-                    <div id="profileHeader"></div>
-                    <h3>Minhas Fotos</h3>
-                    <div id="profilePhotos" class="profile-photos-container"></div>
-                </div>
-
-                <div id="search" class="content-section" style="display:none;">
-                    <h2>Resultados da Pesquisa</h2>
-                    <div id="results" class="search-results-container"></div>
-                </div>
-
-                <div id="chat" class="content-section" style="display:none;">
-                    <h2>Mensagens</h2>
-                    <div class="chat-toggle-buttons">
-                        <button id="publicChatBtn" class="chat-toggle-btn active">Chat Público</button>
-                        <button id="dmsBtn" class="chat-toggle-btn">Mensagens</button>
-                    </div>
-
-                    <div id="publicChat" class="chat-container active">
-                        <div id="publicChatBox" class="chat-box"></div>
-                        <form id="publicMsgForm" class="chat-form">
-                            <input type="text" id="publicMsgInput" placeholder="Escreva uma mensagem...">
-                            <button type="submit">Enviar</button>
-                        </form>
-                    </div>
-
-                    <div id="dms" class="dms-container">
-                        <div id="dmUserList" class="dm-user-list"></div>
-                        <div id="privateChatBox" class="chat-box" style="display:none;"></div>
-                        <form id="dmMsgForm" class="chat-form" style="display:none;">
-                            <input type="text" id="dmMsgInput" placeholder="Escreva uma mensagem...">
-                            <button type="submit">Enviar</button>
-                        </form>
-                    </div>
-                </div>
-
-            </div>
-        </main>
-
-        <footer class="bottom-nav">
-            <button onclick="mostrar('feed')">Feed</button>
-            <button onclick="mostrar('profile')">Perfil</button>
-            <button onclick="mostrar('chat')">Chat</button>
-            <button onclick="mostrar('search')">Pesquisar</button>
-        </footer>
-
-        <div id="notificationModal" class="modal">
-            <div class="modal-content">
-                <span class="close-btn">&times;</span>
-                <h3>Notificações</h3>
-                <ul id="notificationList"></ul>
-            </div>
-        </div>
-
-    </section>
-
-    <script type="module" src="script.js"></script>
-    <script>
-        // Função para mostrar a secção correta
-        function mostrar(sectionId) {
-            document.querySelectorAll('.content-section').forEach(section => {
-                section.style.display = 'none';
-            });
-            document.getElementById(sectionId).style.display = 'block';
-        }
-        
-        document.addEventListener('DOMContentLoaded', () => {
-            mostrar('feed');
-        });
-    </script>
-
+  <script type="module" src="script.js"></script>
 </body>
 </html>
