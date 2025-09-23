@@ -1,20 +1,22 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+import { getAnalytics } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-analytics.js";
 import { getFirestore, collection, addDoc, query, orderBy, onSnapshot, serverTimestamp, doc, getDoc, updateDoc, arrayUnion, setDoc, where, getDocs, arrayRemove, deleteDoc } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 import { getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword, onAuthStateChanged, signOut, GoogleAuthProvider, signInWithPopup } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
 
-// Firebase config
+// A sua configuração do Firebase
 const firebaseConfig = {
   apiKey: "AIzaSyBr9gb7qGFs632l4M9dT6C8sqehQTP8UWE",
   authDomain: "social-media-93276.firebaseapp.com",
   projectId: "social-media-93276",
   storageBucket: "social-media-93276.firebasestorage.app",
   messagingSenderId: "837381193847",
-  appId: "1:837381193847:web:0b33f09354a8bbb90a0672",
-  measurementId: "G-0JRNSXYYLQ"
+  appId: "1:837381193847:web:2d17377d7f0eac770a0672",
+  measurementId: "G-9Y5E5K97NS"
 };
 
 // Inicializar Firebase
 const app = initializeApp(firebaseConfig);
+const analytics = getAnalytics(app);
 const db = getFirestore(app);
 const auth = getAuth(app);
 const provider = new GoogleAuthProvider();
@@ -59,11 +61,7 @@ const dmMsgForm = document.getElementById("dmMsgForm");
 const searchInput = document.getElementById("searchInput");
 const results = document.getElementById("results");
 const storiesBox = document.getElementById("storiesBox");
-const lightThemeBtn = document.getElementById("lightThemeBtn");
-const darkThemeBtn = document.getElementById("darkThemeBtn");
-const wallpaperInput = document.getElementById("wallpaperInput");
-const clearWallpaperBtn = document.getElementById("clearWallpaperBtn");
-const googleAuthBtn = document.getElementById("googleAuthBtn"); // Novo elemento
+const googleAuthBtn = document.getElementById("googleAuthBtn");
 
 let isLoginMode = true;
 
@@ -88,26 +86,10 @@ function carregarWallpaper() {
   aplicarWallpaper(savedWallpaper);
 }
 
-lightThemeBtn.addEventListener('click', () => aplicarTema('light'));
-darkThemeBtn.addEventListener('click', () => aplicarTema('dark'));
-wallpaperInput.addEventListener('change', async (e) => {
-  const file = e.target.files[0];
-  if (file) {
-    const formData = new FormData();
-    formData.append('file', file);
-    formData.append('upload_preset', CLOUDINARY_UPLOAD_PRESET);
-    const response = await fetch(CLOUDINARY_URL, { method: 'POST', body: formData });
-    const data = await response.json();
-    aplicarWallpaper(data.secure_url);
-  }
-});
-clearWallpaperBtn.addEventListener('click', () => aplicarWallpaper(null));
-
 // ---------- AUTENTICAÇÃO E INICIALIZAÇÃO ----------
 onAuthStateChanged(auth, async (user) => {
   if (user) {
     userId = user.uid;
-    console.log("Utilizador autenticado:", userId);
     authSection.style.display = "none";
     appSection.style.display = "block";
     currentProfileId = userId;
@@ -165,7 +147,6 @@ toggleAuthLink.addEventListener("click", (e) => {
 
 logoutBtn.addEventListener("click", async () => {
   await signOut(auth);
-  console.log("Sessão terminada.");
 });
 
 // ---------- LOGIN COM GOOGLE ----------
@@ -174,7 +155,6 @@ if (googleAuthBtn) {
     try {
       const result = await signInWithPopup(auth, provider);
       const user = result.user;
-      
       const userDocRef = doc(db, "users", user.uid);
       const userDocSnap = await getDoc(userDocRef);
 
@@ -188,7 +168,6 @@ if (googleAuthBtn) {
           followers: []
         });
       }
-
       alert("Login com Google bem-sucedido!");
     } catch (error) {
       console.error("Erro no login com Google:", error);
@@ -196,7 +175,6 @@ if (googleAuthBtn) {
     }
   });
 }
-// ----------------------------------------
 
 // ---------- NOTIFICAÇÕES ----------
 notificationBtn.addEventListener("click", () => {
@@ -536,4 +514,28 @@ function carregarFotosDoUtilizador(targetUserId) {
 
 // ---------- MENSAGENS PÚBLICAS E PRIVADAS ----------
 publicChatBtn.addEventListener('click', () => {
-    publicChatBtn.classList.add('act
+    publicChatBtn.classList.add('active');
+    dmsBtn.classList.remove('active');
+    publicChatContainer.classList.add('active');
+    dmsContainer.classList.remove('active');
+});
+dmsBtn.addEventListener('click', () => {
+    dmsBtn.classList.add('active');
+    publicChatBtn.classList.remove('active');
+    publicChatContainer.classList.remove('active');
+    dmsContainer.classList.add('active');
+});
+
+publicMsgForm.addEventListener("submit", async (e) => {
+  e.preventDefault();
+  const text = document.getElementById("publicMsgInput").value;
+  if (text.trim() === "") return;
+  await addDoc(collection(db, "messages"), { senderId: userId, text, timestamp: serverTimestamp() });
+  publicMsgForm.reset();
+});
+
+function carregarMensagensPublicas() {
+  const msgQuery = query(collection(db, "messages"), orderBy("timestamp", "asc"));
+  onSnapshot(msgQuery, (snapshot) => {
+    snapshot.docChanges().forEach((change) => {
+      if (chang
