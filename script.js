@@ -1,6 +1,6 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
 import { getFirestore, collection, addDoc, query, orderBy, onSnapshot, serverTimestamp, doc, getDoc, updateDoc, arrayUnion, setDoc, where, getDocs, arrayRemove, deleteDoc } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
-import { getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
+import { getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword, onAuthStateChanged, signOut, GoogleAuthProvider, signInWithPopup } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
 
 // Firebase config
 const firebaseConfig = {
@@ -17,6 +17,7 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 const auth = getAuth(app);
+const provider = new GoogleAuthProvider();
 
 // --- CONFIGURAÇÃO DO CLOUDINARY ---
 const CLOUDINARY_CLOUD_NAME = 'dya1jd0mx';
@@ -62,6 +63,7 @@ const lightThemeBtn = document.getElementById("lightThemeBtn");
 const darkThemeBtn = document.getElementById("darkThemeBtn");
 const wallpaperInput = document.getElementById("wallpaperInput");
 const clearWallpaperBtn = document.getElementById("clearWallpaperBtn");
+const googleAuthBtn = document.getElementById("googleAuthBtn"); // Novo elemento
 
 let isLoginMode = true;
 
@@ -165,6 +167,36 @@ logoutBtn.addEventListener("click", async () => {
   await signOut(auth);
   console.log("Sessão terminada.");
 });
+
+// ---------- LOGIN COM GOOGLE ----------
+if (googleAuthBtn) {
+  googleAuthBtn.addEventListener('click', async () => {
+    try {
+      const result = await signInWithPopup(auth, provider);
+      const user = result.user;
+      
+      const userDocRef = doc(db, "users", user.uid);
+      const userDocSnap = await getDoc(userDocRef);
+
+      if (!userDocSnap.exists()) {
+        await setDoc(userDocRef, {
+          name: user.displayName,
+          email: user.email,
+          profilePicUrl: user.photoURL,
+          bio: "",
+          following: [],
+          followers: []
+        });
+      }
+
+      alert("Login com Google bem-sucedido!");
+    } catch (error) {
+      console.error("Erro no login com Google:", error);
+      alert(`Erro no login com Google: ${error.message}`);
+    }
+  });
+}
+// ----------------------------------------
 
 // ---------- NOTIFICAÇÕES ----------
 notificationBtn.addEventListener("click", () => {
@@ -464,7 +496,7 @@ async function carregarPerfil(targetUserId) {
         if (e.target.textContent === 'Seguir') {
           await seguirUtilizador(userToFollowId);
         } else {
-          await deixarDeSeguirUtilizador(userToFollowId);
+          await deixarDeSeguirUtilizador(userToUnfollowId);
         }
       });
     }
@@ -519,30 +551,4 @@ dmsBtn.addEventListener('click', () => {
 publicMsgForm.addEventListener("submit", async (e) => {
   e.preventDefault();
   const text = document.getElementById("publicMsgInput").value;
-  if (text.trim() === "") return;
-  await addDoc(collection(db, "messages"), { senderId: userId, text, timestamp: serverTimestamp() });
-  publicMsgForm.reset();
-});
-
-function carregarMensagensPublicas() {
-  const msgQuery = query(collection(db, "messages"), orderBy("timestamp", "asc"));
-  onSnapshot(msgQuery, (snapshot) => {
-    snapshot.docChanges().forEach((change) => {
-      if (change.type === "added") {
-        const data = change.doc.data();
-        const div = document.createElement("div");
-        div.classList.add("chat-message", data.senderId === userId ? "sent" : "received");
-        div.innerHTML = `<span class="message-text">${data.text}</span>`;
-        publicChatBox.appendChild(div);
-        publicChatBox.scrollTop = publicChatBox.scrollHeight;
-      }
-    });
-  });
-}
-
-function carregarDmUserList() {
-    dmUserList.innerHTML = "";
-    const usersQuery = query(collection(db, "users"));
-    onSnapshot(usersQuery, (snapshot) => {
-        snapshot.forEach(doc => {
-            const userData 
+  if (text.tri
