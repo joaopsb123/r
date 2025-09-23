@@ -2,119 +2,84 @@
 <html lang="pt">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Minha Rede Social</title>
-  <link rel="stylesheet" href="style.css">
+  <title>Minha Social</title>
+  <style>
+    body { font-family: Arial, sans-serif; margin: 0; padding: 20px; }
+    #app { display: none; }
+    .hidden { display: none; }
+    .post, .chat-message { border: 1px solid #ccc; padding: 10px; margin: 5px 0; border-radius: 6px; }
+    .active { display: block !important; }
+    button { margin: 5px; padding: 6px 12px; cursor: pointer; }
+    #notificationModal { display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.5);}
+    #notificationModal .modal-content { background:#fff; margin:10% auto; padding:20px; width:300px; border-radius:6px; }
+    .close-btn { float:right; cursor:pointer; }
+  </style>
 </head>
 <body>
 
-<section id="auth">
-  <h1>Bem-vindo!</h1>
-  <form id="authForm">
-    <input type="email" id="email" placeholder="Email" required style="display:none;">
-    <input type="text" id="username" placeholder="Nome de Utilizador" required>
-    <input type="password" id="password" placeholder="Password" required>
-    <button type="submit" id="authBtn">Entrar</button>
-  </form>
-  <p id="authMessage" style="text-align:center; margin-top:10px;"></p>
-  <button type="button" id="googleAuthBtn" class="google-btn">Login com Google</button>
-  <a href="#" id="toggleAuth">Criar conta</a>
-</section>
+  <!-- === AUTENTICAÇÃO === -->
+  <section id="auth">
+    <h2 id="authTitle">Autenticação</h2>
+    <form id="authForm">
+      <input type="text" id="username" placeholder="Nome de utilizador (só no registo)" style="display:none;"><br>
+      <input type="email" id="email" placeholder="Email"><br>
+      <input type="password" id="password" placeholder="Password"><br>
+      <button type="submit" id="authBtn">Entrar</button>
+    </form>
+    <button id="googleAuthBtn">Entrar com Google</button>
+    <p><a href="#" id="toggleAuth">Criar conta</a></p>
+    <div id="authMessage" style="margin-top:10px; color:red;"></div>
+  </section>
 
-<section id="app" style="display:none;">
+  <!-- === APP === -->
+  <section id="app">
+    <button id="logoutBtn">Sair</button>
+    <h2>Feed</h2>
+    <form id="postForm">
+      <input type="text" id="caption" placeholder="Escreve algo...">
+      <button type="submit">Publicar</button>
+    </form>
+    <div id="feedPosts"></div>
 
-  <header class="top-nav">
-    <div class="logo">Minha Social</div>
-    <div class="user-actions">
-      <input type="text" id="searchInput" placeholder="Pesquisar utilizadores...">
-      <button id="notificationBtn">Notificações</button>
-      <button id="logoutBtn">Sair</button>
+    <h2>Perfil</h2>
+    <div id="profileHeader"></div>
+    <div id="profilePhotos"></div>
+
+    <h2>Pesquisa</h2>
+    <input type="text" id="searchInput" placeholder="Procurar utilizadores...">
+    <div id="results"></div>
+
+    <h2>Chat</h2>
+    <button id="publicChatBtn" class="active">Chat Público</button>
+    <button id="dmsBtn">Mensagens Privadas</button>
+
+    <div id="publicChat" class="active">
+      <div id="publicChatBox"></div>
+      <form id="publicMsgForm">
+        <input type="text" id="publicMsgInput" placeholder="Escreve...">
+        <button type="submit">Enviar</button>
+      </form>
     </div>
-  </header>
-  
-  <main class="main-content">
-    <div id="mainContent">
 
-      <div id="feed" class="content-section">
-        <h2>Feed de Notícias</h2>
-        <form id="postForm" class="post-form">
-          <textarea id="caption" placeholder="O que está a pensar?"></textarea>
-          <button type="submit">Publicar</button>
-        </form>
-        <div id="feedPosts" class="feed-posts-container"></div>
-      </div>
-
-      <div id="profile" class="content-section" style="display:none;">
-        <div id="profileHeader"></div>
-        <h3>Minhas Fotos</h3>
-        <div id="profilePhotos" class="profile-photos-container"></div>
-      </div>
-
-      <div id="search" class="content-section" style="display:none;">
-        <h2>Resultados da Pesquisa</h2>
-        <div id="results" class="search-results-container"></div>
-      </div>
-
-      <div id="chat" class="content-section" style="display:none;">
-        <h2>Mensagens</h2>
-        <div class="chat-toggle-buttons">
-            <button id="publicChatBtn" class="chat-toggle-btn active">Chat Público</button>
-            <button id="dmsBtn" class="chat-toggle-btn">Mensagens</button>
-        </div>
-
-        <div id="publicChat" class="chat-container active">
-            <div id="publicChatBox" class="chat-box"></div>
-            <form id="publicMsgForm" class="chat-form">
-                <input type="text" id="publicMsgInput" placeholder="Escreva uma mensagem...">
-                <button type="submit">Enviar</button>
-            </form>
-        </div>
-
-        <div id="dms" class="dms-container">
-            <div id="dmUserList" class="dm-user-list"></div>
-            <div id="privateChatBox" class="chat-box" style="display:none;"></div>
-            <form id="dmMsgForm" class="chat-form" style="display:none;">
-                <input type="text" id="dmMsgInput" placeholder="Escreva uma mensagem...">
-                <button type="submit">Enviar</button>
-            </form>
-        </div>
-      </div>
-
+    <div id="dms" class="hidden">
+      <div id="dmUserList"></div>
+      <div id="privateChatBox"></div>
+      <form id="dmMsgForm" style="display:none;">
+        <input type="text" id="dmMsgInput" placeholder="Escreve...">
+        <button type="submit">Enviar</button>
+      </form>
     </div>
-  </main>
 
-  <footer class="bottom-nav">
-      <button onclick="mostrar('feed')">Feed</button>
-      <button onclick="mostrar('profile')">Perfil</button>
-      <button onclick="mostrar('chat')">Chat</button>
-      <button onclick="mostrar('search')">Pesquisar</button>
-  </footer>
-
-  <div id="notificationModal" class="modal">
+    <h2>Notificações</h2>
+    <button id="notificationBtn">Ver notificações</button>
+    <div id="notificationModal">
       <div class="modal-content">
-          <span class="close-btn">&times;</span>
-          <h3>Notificações</h3>
-          <ul id="notificationList"></ul>
+        <span class="close-btn">&times;</span>
+        <ul id="notificationList"></ul>
       </div>
-  </div>
+    </div>
+  </section>
 
-</section>
-
-<script type="module" src="script.js"></script>
-<script>
-    // Função para mostrar a secção correta
-    function mostrar(sectionId) {
-        document.querySelectorAll('.content-section').forEach(section => {
-            section.style.display = 'none';
-        });
-        document.getElementById(sectionId).style.display = 'block';
-    }
-    
-    document.addEventListener('DOMContentLoaded', () => {
-        mostrar('feed');
-    });
-</script>
-
+  <script type="module" src="script.js"></script>
 </body>
-        </html>
-        
+</html>
