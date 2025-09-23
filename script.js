@@ -1,120 +1,73 @@
+// === Importar Firebase ===
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
-import { getAnalytics } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-analytics.js";
-import { getFirestore, collection, addDoc, query, orderBy, onSnapshot, serverTimestamp, doc, getDoc, updateDoc, arrayUnion, setDoc, where, getDocs, arrayRemove, deleteDoc } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
-import { getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword, onAuthStateChanged, signOut, GoogleAuthProvider, signInWithPopup } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
+import {
+  getFirestore, collection, addDoc, query, orderBy, onSnapshot,
+  serverTimestamp, doc, getDoc, updateDoc, arrayUnion, setDoc,
+  where, getDocs, arrayRemove, deleteDoc
+} from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 
-// A sua configuração do Firebase
+import {
+  getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword,
+  signOut, onAuthStateChanged, GoogleAuthProvider, signInWithPopup
+} from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
+
+// === Configuração Firebase ===
 const firebaseConfig = {
-  apiKey: "AIzaSyBr9gb7qGFs632l4M9dT6C8sqehQTP8UWE",
-  authDomain: "social-media-93276.firebaseapp.com",
-  projectId: "social-media-93276",
-  storageBucket: "social-media-93276.firebasestorage.app",
-  messagingSenderId: "837381193847",
-  appId: "1:837381193847:web:2d17377d7f0eac770a0672",
-  measurementId: "G-9Y5E5K97NS"
+  apiKey: "AQUI_TUA_API_KEY",
+  authDomain: "AQUI_TEU_DOMINIO.firebaseapp.com",
+  projectId: "AQUI_TEU_PROJETO",
+  storageBucket: "AQUI_TEU_BUCKET",
+  messagingSenderId: "AQUI_TEU_ID",
+  appId: "AQUI_TUA_APPID"
 };
 
-// Inicializar Firebase
 const app = initializeApp(firebaseConfig);
-const analytics = getAnalytics(app);
 const db = getFirestore(app);
 const auth = getAuth(app);
 const provider = new GoogleAuthProvider();
 
-// --- CONFIGURAÇÃO DO CLOUDINARY ---
-const CLOUDINARY_CLOUD_NAME = 'dya1jd0mx';
-const CLOUDINARY_UPLOAD_PRESET = 'Social';
-const CLOUDINARY_URL = `https://api.cloudinary.com/v1_1/${CLOUDINARY_CLOUD_NAME}/upload`;
-// --- FIM DA CONFIGURAÇÃO ---
-
-let userId;
-let currentProfileId;
-let currentDmId = null;
-let allUsers = [];
-
-// ---------- UI ELEMENTS ----------
+// === ELEMENTOS DO DOM ===
 const authSection = document.getElementById("auth");
 const appSection = document.getElementById("app");
 const authForm = document.getElementById("authForm");
-const usernameInput = document.getElementById("username");
-const authBtn = document.getElementById("authBtn");
 const toggleAuthLink = document.getElementById("toggleAuth");
+const authBtn = document.getElementById("authBtn");
+const googleAuthBtn = document.getElementById("googleAuthBtn");
+const usernameInput = document.getElementById("username");
 const logoutBtn = document.getElementById("logoutBtn");
-const notificationBtn = document.getElementById("notificationBtn");
-const notificationModal = document.getElementById("notificationModal");
-const notificationList = document.getElementById("notificationList");
-const closeBtn = document.querySelector(".close-btn");
-const notificationCount = document.getElementById("notificationCount");
+
 const postForm = document.getElementById("postForm");
 const feedPosts = document.getElementById("feedPosts");
 const profileHeader = document.getElementById("profileHeader");
 const profilePhotos = document.getElementById("profilePhotos");
-const publicChatBtn = document.getElementById("publicChatBtn");
-const dmsBtn = document.getElementById("dmsBtn");
-const publicChatContainer = document.getElementById("publicChat");
-const dmsContainer = document.getElementById("dms");
-const publicChatBox = document.getElementById("publicChatBox");
-const publicMsgForm = document.getElementById("publicMsgForm");
-const dmUserList = document.getElementById("dmUserList");
-const privateChatBox = document.getElementById("privateChat");
-const dmMsgForm = document.getElementById("dmMsgForm");
+
 const searchInput = document.getElementById("searchInput");
 const results = document.getElementById("results");
-const storiesBox = document.getElementById("storiesBox");
-const googleAuthBtn = document.getElementById("googleAuthBtn");
+
+const publicChatBox = document.getElementById("publicChatBox");
+const publicMsgForm = document.getElementById("publicMsgForm");
+const publicMsgInput = document.getElementById("publicMsgInput");
+
+const dmUserList = document.getElementById("dmUserList");
+const privateChatBox = document.getElementById("privateChatBox");
+const dmMsgForm = document.getElementById("dmMsgForm");
+const dmMsgInput = document.getElementById("dmMsgInput");
+
+const notificationBtn = document.getElementById("notificationBtn");
+const notificationModal = document.getElementById("notificationModal");
+const notificationList = document.getElementById("notificationList");
+const closeBtn = document.querySelector(".close-btn");
 
 let isLoginMode = true;
+let currentUser = null;
+let currentDMUser = null;
 
-// ---------- TEMA E CONFIGURAÇÕES ----------
-function aplicarTema(tema) {
-  document.body.className = `${tema}-theme`;
-  localStorage.setItem('theme', tema);
-}
-
-function carregarTema() {
-  const savedTheme = localStorage.getItem('theme') || 'light';
-  aplicarTema(savedTheme);
-}
-
-function aplicarWallpaper(url) {
-  document.body.style.backgroundImage = url ? `url(${url})` : '';
-  localStorage.setItem('wallpaper', url || '');
-}
-
-function carregarWallpaper() {
-  const savedWallpaper = localStorage.getItem('wallpaper');
-  aplicarWallpaper(savedWallpaper);
-}
-
-// ---------- AUTENTICAÇÃO E INICIALIZAÇÃO ----------
-onAuthStateChanged(auth, async (user) => {
-  if (user) {
-    userId = user.uid;
-    authSection.style.display = "none";
-    appSection.style.display = "block";
-    currentProfileId = userId;
-    
-    carregarTema();
-    carregarWallpaper();
-    carregarFeed();
-    carregarMensagensPublicas();
-    carregarStories();
-    carregarPesquisa();
-    carregarPerfil(userId);
-    carregarNotificacoes();
-    carregarDmUserList();
-  } else {
-    authSection.style.display = "block";
-    appSection.style.display = "none";
-  }
-});
-
+// === AUTENTICAÇÃO ===
 authForm.addEventListener("submit", async (e) => {
   e.preventDefault();
-  const username = usernameInput.value;
+  const email = document.getElementById("email").value;
   const password = document.getElementById("password").value;
-  // Gerar um email a partir do nome de utilizador
-  const email = `${username}@minhasocial.com`; 
+  const username = usernameInput.value;
 
   try {
     if (isLoginMode) {
@@ -123,418 +76,239 @@ authForm.addEventListener("submit", async (e) => {
     } else {
       const userCredential = await createUserWithEmailAndPassword(auth, email, password);
       await setDoc(doc(db, "users", userCredential.user.uid), {
-        name: username,
+        name: username || email.split("@")[0],
         email: email,
         bio: "",
         profilePicUrl: null,
         following: [],
         followers: []
       });
-      alert("Registo bem-sucedido!");
+      alert("Conta criada com sucesso!");
     }
   } catch (error) {
-    console.error("Erro de autenticação:", error.message);
-    alert(`Erro de autenticação: ${error.message}`);
+    alert("Erro: " + error.message);
   }
 });
 
+// Alternar login/registro
 toggleAuthLink.addEventListener("click", (e) => {
   e.preventDefault();
   isLoginMode = !isLoginMode;
-  usernameInput.style.display = "block"; // O campo de nome de utilizador está sempre visível
-  authBtn.textContent = isLoginMode ? "Entrar" : "Criar conta";
-  toggleAuthLink.textContent = isLoginMode ? "Criar conta" : "Entrar";
+  if (isLoginMode) {
+    usernameInput.style.display = "none";
+    authBtn.textContent = "Entrar";
+    toggleAuthLink.textContent = "Criar conta";
+  } else {
+    usernameInput.style.display = "block";
+    authBtn.textContent = "Criar conta";
+    toggleAuthLink.textContent = "Já tenho conta";
+  }
 });
 
+// Google login
+googleAuthBtn.addEventListener("click", async () => {
+  try {
+    const result = await signInWithPopup(auth, provider);
+    const user = result.user;
+    const userRef = doc(db, "users", user.uid);
+    const snap = await getDoc(userRef);
+    if (!snap.exists()) {
+      await setDoc(userRef, {
+        name: user.displayName,
+        email: user.email,
+        bio: "",
+        profilePicUrl: user.photoURL,
+        following: [],
+        followers: []
+      });
+    }
+  } catch (err) {
+    alert("Erro Google: " + err.message);
+  }
+});
+
+// Logout
 logoutBtn.addEventListener("click", async () => {
   await signOut(auth);
 });
 
-// ---------- LOGIN COM GOOGLE ----------
-if (googleAuthBtn) {
-  googleAuthBtn.addEventListener('click', async () => {
-    try {
-      const result = await signInWithPopup(auth, provider);
-      const user = result.user;
-      const userDocRef = doc(db, "users", user.uid);
-      const userDocSnap = await getDoc(userDocRef);
-
-      if (!userDocSnap.exists()) {
-        await setDoc(userDocRef, {
-          name: user.displayName,
-          email: user.email,
-          profilePicUrl: user.photoURL,
-          bio: "",
-          following: [],
-          followers: []
-        });
-      }
-      alert("Login com Google bem-sucedido!");
-    } catch (error) {
-      console.error("Erro no login com Google:", error);
-      alert(`Erro no login com Google: ${error.message}`);
-    }
-  });
-}
-
-// ---------- NOTIFICAÇÕES ----------
-notificationBtn.addEventListener("click", () => {
-  notificationModal.style.display = "block";
-});
-closeBtn.addEventListener("click", () => {
-  notificationModal.style.display = "none";
+// Estado do utilizador
+onAuthStateChanged(auth, (user) => {
+  if (user) {
+    currentUser = user;
+    authSection.style.display = "none";
+    appSection.style.display = "block";
+    carregarFeed();
+    carregarPerfil();
+    carregarChatPublico();
+    carregarUtilizadoresDM();
+    carregarNotificacoes();
+  } else {
+    currentUser = null;
+    authSection.style.display = "block";
+    appSection.style.display = "none";
+  }
 });
 
-function carregarNotificacoes() {
-  const notifQuery = query(collection(db, "notifications"), where("targetId", "==", userId), orderBy("createdAt", "desc"));
-  onSnapshot(notifQuery, (snapshot) => {
-    notificationList.innerHTML = "";
-    let unreadCount = 0;
-    snapshot.forEach(doc => {
-      const data = doc.data();
-      const div = document.createElement("div");
-      div.classList.add("notification-item");
-      if (!data.read) {
-        div.classList.add("unread");
-        unreadCount++;
-      }
-      div.innerHTML = `<p>${data.message}</p>`;
-      notificationList.appendChild(div);
-    });
-    notificationCount.textContent = unreadCount > 0 ? unreadCount : "";
-  });
-}
-
-// ---------- FEED & POSTS ----------
+// === FEED ===
 postForm.addEventListener("submit", async (e) => {
   e.preventDefault();
   const caption = document.getElementById("caption").value;
-  const imageFile = document.getElementById("postImage").files[0];
-  if (!caption && !imageFile) return;
-
-  try {
-    let imageUrl = null;
-    if (imageFile) {
-      const formData = new FormData();
-      formData.append('file', imageFile);
-      formData.append('upload_preset', CLOUDINARY_UPLOAD_PRESET);
-      const response = await fetch(CLOUDINARY_URL, { method: 'POST', body: formData });
-      const data = await response.json();
-      imageUrl = data.secure_url;
-    }
-
-    await addDoc(collection(db, "posts"), {
-      caption,
-      imageUrl,
-      createdAt: serverTimestamp(),
-      authorId: userId,
-      likes: [],
-      comments: []
-    });
-    postForm.reset();
-    alert("Post publicado!");
-  } catch (error) {
-    console.error("Erro ao publicar post:", error);
-    alert("Erro ao publicar post.");
-  }
+  await addDoc(collection(db, "posts"), {
+    userId: currentUser.uid,
+    caption: caption,
+    createdAt: serverTimestamp()
+  });
+  document.getElementById("caption").value = "";
 });
-
-function timeSince(date) {
-  const seconds = Math.floor((new Date() - date) / 1000);
-  let interval = seconds / 31536000;
-  if (interval > 1) return Math.floor(interval) + " anos atrás";
-  interval = seconds / 2592000;
-  if (interval > 1) return Math.floor(interval) + " meses atrás";
-  interval = seconds / 86400;
-  if (interval > 1) return Math.floor(interval) + " dias atrás";
-  interval = seconds / 3600;
-  if (interval > 1) return Math.floor(interval) + " horas atrás";
-  interval = seconds / 60;
-  if (interval > 1) return Math.floor(interval) + " minutos atrás";
-  return Math.floor(seconds) + " segundos atrás";
-}
 
 function carregarFeed() {
-    const feedQuery = query(collection(db, "posts"), orderBy("createdAt", "desc"));
-    onSnapshot(feedQuery, async snapshot => {
-        feedPosts.innerHTML = "";
-        const userMap = new Map();
-        for (const doc of snapshot.docs) {
-            const data = doc.data();
-            let userData = userMap.get(data.authorId);
-            if (!userData) {
-                const userDoc = await getDoc(doc(db, "users", data.authorId));
-                userData = userDoc.data();
-                userMap.set(data.authorId, userData);
-            }
-            const formattedTime = data.createdAt ? timeSince(new Date(data.createdAt.seconds * 1000)) : 'agora';
-            const div = document.createElement("div");
-            div.classList.add("post-card");
-
-            const isMyPost = data.authorId === userId;
-
-            div.innerHTML = `
-                <div class="post-header">
-                    <div class="post-header-left">
-                        <img src="${userData.profilePicUrl || 'https://via.placeholder.com/50'}" class="post-profile-pic" alt="Foto de perfil">
-                        <span class="user-name" onclick="mostrarPerfil('${data.authorId}')">${userData.name}</span>
-                    </div>
-                    <span class="post-time">${formattedTime}</span>
-                    ${isMyPost ? `<button class="delete-post-btn" data-postid="${doc.id}">🗑️</button>` : ''}
-                </div>
-                ${data.imageUrl ? `<img src="${data.imageUrl}" class="post-image" alt="Imagem do post">` : ''}
-                <p class="post-caption">${data.caption}</p>
-                <div class="post-actions">
-                    <button class="like-btn" data-postid="${doc.id}">
-                        ❤️ ${data.likes?.length || 0}
-                    </button>
-                    <button class="comment-btn" data-postid="${doc.id}">
-                        💬 Comentar
-                    </button>
-                </div>
-                <div class="comments-section" id="comments-${doc.id}">
-                    ${data.comments.map(c => `<p class="comment-text"><strong>${c.authorId}</strong>: ${c.text}</p>`).join('')}
-                </div>
-            `;
-            feedPosts.appendChild(div);
-
-            const deleteBtn = div.querySelector('.delete-post-btn');
-            if (deleteBtn) {
-                deleteBtn.addEventListener('click', async () => {
-                    if (confirm("Tem certeza que quer apagar esta publicação?")) {
-                        await deleteDoc(doc(db, "posts", doc.id));
-                    }
-                });
-            }
-
-            const commentBtn = div.querySelector(`.comment-btn[data-postid="${doc.id}"]`);
-            if(commentBtn){
-                commentBtn.addEventListener('click', () => {
-                    const commentText = prompt("Escreva o seu comentário:");
-                    if (commentText) {
-                        const postRef = doc(db, "posts", doc.id);
-                        updateDoc(postRef, {
-                            comments: arrayUnion({ authorId: userId, text: commentText, timestamp: serverTimestamp() })
-                        });
-                    }
-                });
-            }
-        }
-    
-        document.querySelectorAll('.like-btn').forEach(btn => {
-            btn.addEventListener('click', async (e) => {
-                const postId = e.currentTarget.dataset.postid;
-                const postRef = doc(db, "posts", postId);
-                await updateDoc(postRef, { likes: arrayUnion(userId) });
-            });
-        });
-    });
-}
-
-// ---------- STORIES ----------
-async function uploadStory(file) {
-  try {
-    const formData = new FormData();
-    formData.append('file', file);
-    formData.append('upload_preset', CLOUDINARY_UPLOAD_PRESET);
-    const response = await fetch(CLOUDINARY_URL, { method: 'POST', body: formData });
-    const data = await response.json();
-    const expiresAt = new Date().getTime() + 86400000; // 24 horas em milisegundos
-
-    await addDoc(collection(db, "stories"), {
-      imageUrl: data.secure_url,
-      createdAt: serverTimestamp(),
-      expiresAt: expiresAt,
-      authorId: userId
-    });
-    alert("História publicada!");
-  } catch (error) {
-    console.error("Erro ao publicar história:", error);
-    alert("Erro ao publicar história.");
-  }
-}
-
-function carregarStories() {
-  const storiesQuery = query(collection(db, "stories"), orderBy("createdAt", "desc"));
-  onSnapshot(storiesQuery, async (snapshot) => {
-    storiesBox.innerHTML = "";
-    const now = new Date().getTime();
-    const uniqueAuthors = new Map();
-
-    for (const d of snapshot.docs) {
-      const story = d.data();
-      if (story.expiresAt > now) {
-        if (!uniqueAuthors.has(story.authorId)) {
-          const userDoc = await getDoc(doc(db, "users", story.authorId));
-          const userData = userDoc.data();
-          uniqueAuthors.set(story.authorId, {
-            ...userData,
-            storyUrl: story.imageUrl
-          });
-        }
-      }
-    }
-
-    uniqueAuthors.forEach((userData, authorId) => {
+  const q = query(collection(db, "posts"), orderBy("createdAt", "desc"));
+  onSnapshot(q, async (snapshot) => {
+    feedPosts.innerHTML = "";
+    for (let docSnap of snapshot.docs) {
+      const post = docSnap.data();
+      const userSnap = await getDoc(doc(db, "users", post.userId));
+      const user = userSnap.data();
       const div = document.createElement("div");
-      div.classList.add("story-item");
+      div.classList.add("post");
       div.innerHTML = `
-        <img src="${userData.profilePicUrl || 'https://via.placeholder.com/60'}" alt="História de ${userData.name}">
-        <span class="story-user-name">${userData.name}</span>
+        <h4>${user?.name || "Anónimo"}</h4>
+        <p>${post.caption}</p>
       `;
-      div.addEventListener('click', () => {
-        alert(`A ver a história de ${userData.name}: ${userData.storyUrl}`);
-      });
-      storiesBox.appendChild(div);
-    });
+      feedPosts.appendChild(div);
+    }
   });
 }
 
-// ---------- PERFIL (COMPLETO) ----------
-function mostrarPerfil(targetUserId) {
-  currentProfileId = targetUserId;
-  mostrar('profile');
-  carregarPerfil(targetUserId);
+// === PERFIL ===
+async function carregarPerfil() {
+  const userRef = doc(db, "users", currentUser.uid);
+  const snap = await getDoc(userRef);
+  if (snap.exists()) {
+    const data = snap.data();
+    profileHeader.innerHTML = `
+      <h2>${data.name}</h2>
+      <p>${data.bio || "Sem biografia"}</p>
+    `;
+  }
 }
 
-async function carregarPerfil(targetUserId) {
-  const userRef = doc(db, "users", targetUserId);
-  const userSnap = await getDoc(userRef);
-
-  if (!userSnap.exists()) {
-    profileHeader.innerHTML = "<p>Utilizador não encontrado.</p>";
-    profilePhotos.innerHTML = "";
+// === PESQUISA ===
+searchInput.addEventListener("keyup", async () => {
+  const term = searchInput.value.trim().toLowerCase();
+  if (term === "") {
+    results.innerHTML = "";
     return;
   }
+  const q = query(collection(db, "users"), where("name", ">=", term), where("name", "<=", term + "\uf8ff"));
+  const querySnap = await getDocs(q);
+  results.innerHTML = "";
+  querySnap.forEach((docSnap) => {
+    const user = docSnap.data();
+    const div = document.createElement("div");
+    div.textContent = user.name;
+    results.appendChild(div);
+  });
+});
 
-  const userData = userSnap.data();
-  const isMyProfile = targetUserId === userId;
+// === CHAT PÚBLICO ===
+publicMsgForm.addEventListener("submit", async (e) => {
+  e.preventDefault();
+  const text = publicMsgInput.value;
+  if (!text) return;
+  await addDoc(collection(db, "publicChat"), {
+    userId: currentUser.uid,
+    text: text,
+    createdAt: serverTimestamp()
+  });
+  publicMsgInput.value = "";
+});
 
-  profileHeader.innerHTML = `
-    <div class="profile-header">
-      <img class="profile-pic" src="${userData.profilePicUrl || 'https://via.placeholder.com/150'}" alt="Foto de Perfil">
-      <h2 class="profile-name">${userData.name}</h2>
-    </div>
-    <p class="profile-bio">${userData.bio}</p>
-    <div class="profile-stats">
-      <span><strong>${userData.following?.length || 0}</strong> a seguir</span>
-      <span><strong>${userData.followers?.length || 0}</strong> seguidores</span>
-    </div>
-    ${isMyProfile ? `
-      <div class="profile-meta">
-        <p>Membro desde: ${new Date(auth.currentUser.metadata.creationTime).toLocaleDateString()}</p>
-      </div>
-      <button onclick="editarPerfil()" class="edit-profile-btn">Editar Perfil</button>
-    ` : `
-      <button class="follow-btn" data-userid="${targetUserId}">${userData.followers?.includes(userId) ? 'A seguir' : 'Seguir'}</button>
-    `}
-  `;
-  
-  if (isMyProfile) {
-    const photoUploader = document.createElement('div');
-    photoUploader.innerHTML = `
-        <div class="profile-upload-container">
-            <h3>Carregar foto de perfil</h3>
-            <input type="file" id="profilePicInput" accept="image/*">
-            <button id="uploadStoryBtn">Publicar História</button>
-        </div>
-    `;
-    profileHeader.appendChild(photoUploader);
-    
-    document.getElementById('profilePicInput').addEventListener('change', async (e) => {
-      const file = e.target.files[0];
-      if (file) {
-        const formData = new FormData();
-        formData.append('file', file);
-        formData.append('upload_preset', CLOUDINARY_UPLOAD_PRESET);
-        const response = await fetch(CLOUDINARY_URL, { method: 'POST', body: formData });
-        const data = await response.json();
-        const url = data.secure_url;
-        await updateDoc(doc(db, "users", userId), { profilePicUrl: url });
-        carregarPerfil(userId);
-      }
-    });
-
-    document.getElementById('uploadStoryBtn').addEventListener('click', () => {
-        const fileInput = document.createElement('input');
-        fileInput.type = 'file';
-        fileInput.accept = 'image/*';
-        fileInput.onchange = (e) => {
-            if (e.target.files.length > 0) {
-                uploadStory(e.target.files[0]);
-            }
-        };
-        fileInput.click();
-    });
-
-  } else {
-    const followBtn = document.querySelector('.follow-btn');
-    if (followBtn) {
-      followBtn.addEventListener('click', async (e) => {
-        const userToFollowId = e.target.dataset.userid;
-        if (e.target.textContent === 'Seguir') {
-          await seguirUtilizador(userToFollowId);
-        } else {
-          await deixarDeSeguirUtilizador(userToFollowId);
-        }
-      });
+function carregarChatPublico() {
+  const q = query(collection(db, "publicChat"), orderBy("createdAt", "asc"));
+  onSnapshot(q, async (snapshot) => {
+    publicChatBox.innerHTML = "";
+    for (let docSnap of snapshot.docs) {
+      const msg = docSnap.data();
+      const userSnap = await getDoc(doc(db, "users", msg.userId));
+      const user = userSnap.data();
+      const p = document.createElement("p");
+      p.innerHTML = `<strong>${user?.name}:</strong> ${msg.text}`;
+      publicChatBox.appendChild(p);
     }
-  }
-
-  carregarFotosDoUtilizador(targetUserId);
+  });
 }
 
-async function editarPerfil() {
-  const userRef = doc(db, "users", userId);
-  const userSnap = await getDoc(userRef);
-  const userData = userSnap.data();
-  const newName = prompt("Introduza o seu novo nome:", userData.name);
-  const newBio = prompt("Introduza a sua nova biografia:", userData.bio);
-  
-  if (newName !== null && newBio !== null) {
-    await updateDoc(userRef, { name: newName, bio: newBio });
-    carregarPerfil(userId);
-  }
+// === DM (mensagens privadas) ===
+async function carregarUtilizadoresDM() {
+  const q = query(collection(db, "users"));
+  const snap = await getDocs(q);
+  dmUserList.innerHTML = "";
+  snap.forEach((docSnap) => {
+    if (docSnap.id !== currentUser.uid) {
+      const user = docSnap.data();
+      const btn = document.createElement("button");
+      btn.textContent = user.name;
+      btn.onclick = () => abrirDM(docSnap.id, user.name);
+      dmUserList.appendChild(btn);
+    }
+  });
 }
 
-function carregarFotosDoUtilizador(targetUserId) {
-  const userPostsQuery = query(collection(db, "posts"), where("authorId", "==", targetUserId), orderBy("createdAt", "desc"));
-  onSnapshot(userPostsQuery, (snapshot) => {
-    profilePhotos.innerHTML = "";
-    snapshot.forEach((doc) => {
-      const data = doc.data();
-      if (data.imageUrl) {
-        const img = document.createElement("img");
-        img.src = data.imageUrl;
-        img.classList.add("my-photo");
-        profilePhotos.appendChild(img);
-      }
+function abrirDM(userId, name) {
+  currentDMUser = userId;
+  privateChatBox.style.display = "block";
+  dmMsgForm.style.display = "flex";
+  privateChatBox.innerHTML = `<h4>Chat com ${name}</h4>`;
+  const chatId = [currentUser.uid, userId].sort().join("_");
+  const q = query(collection(db, "dms", chatId, "messages"), orderBy("createdAt", "asc"));
+  onSnapshot(q, async (snapshot) => {
+    privateChatBox.innerHTML = `<h4>Chat com ${name}</h4>`;
+    snapshot.forEach((docSnap) => {
+      const msg = docSnap.data();
+      const p = document.createElement("p");
+      p.innerHTML = `<strong>${msg.sender === currentUser.uid ? "Eu" : name}:</strong> ${msg.text}`;
+      privateChatBox.appendChild(p);
     });
   });
 }
 
-// ---------- MENSAGENS PÚBLICAS E PRIVADAS ----------
-publicChatBtn.addEventListener('click', () => {
-    publicChatBtn.classList.add('active');
-    dmsBtn.classList.remove('active');
-    publicChatContainer.classList.add('active');
-    dmsContainer.classList.remove('active');
-});
-dmsBtn.addEventListener('click', () => {
-    dmsBtn.classList.add('active');
-    publicChatBtn.classList.remove('active');
-    publicChatContainer.classList.remove('active');
-    dmsContainer.classList.add('active');
-});
-
-publicMsgForm.addEventListener("submit", async (e) => {
+dmMsgForm.addEventListener("submit", async (e) => {
   e.preventDefault();
-  const text = document.getElementById("publicMsgInput").value;
-  if (text.trim() === "") return;
-  await addDoc(collection(db, "messages"), { senderId: userId, text, timestamp: serverTimestamp() });
-  publicMsgForm.reset();
+  const text = dmMsgInput.value;
+  if (!text || !currentDMUser) return;
+  const chatId = [currentUser.uid, currentDMUser].sort().join("_");
+  await addDoc(collection(db, "dms", chatId, "messages"), {
+    sender: currentUser.uid,
+    text: text,
+    createdAt: serverTimestamp()
+  });
+  dmMsgInput.value = "";
 });
 
-function carregarMensagensPublicas() {
-  const msgQuery = query(collection(db, "messages"), orderBy("timestamp", "asc"));
-  onSnapshot(msgQuery, (snaps
+// === NOTIFICAÇÕES ===
+function carregarNotificacoes() {
+  const q = query(collection(db, "notifications", currentUser.uid, "items"), orderBy("createdAt", "desc"));
+  onSnapshot(q, (snapshot) => {
+    notificationList.innerHTML = "";
+    snapshot.forEach((docSnap) => {
+      const notif = docSnap.data();
+      const li = document.createElement("li");
+      li.textContent = notif.text;
+      notificationList.appendChild(li);
+    });
+  });
+}
+
+notificationBtn.onclick = () => {
+  notificationModal.style.display = "block";
+};
+closeBtn.onclick = () => {
+  notificationModal.style.display = "none";
+};
+window.onclick = (event) => {
+  if (event.target == notificationModal) {
+    notificationModal.style.display = "none";
+  }
+};
