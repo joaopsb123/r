@@ -3,81 +3,40 @@
 <head>
   <meta charset="UTF-8">
   <title>Minha Social</title>
-  <style>
-    body { font-family: Arial, sans-serif; margin: 0; padding: 20px; }
-    #app { display: none; }
-    .hidden { display: none; }
-    .post, .chat-message { border: 1px solid #ccc; padding: 10px; margin: 5px 0; border-radius: 6px; }
-    .active { display: block !important; }
-    button { margin: 5px; padding: 6px 12px; cursor: pointer; }
-    #notificationModal { display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.5);}
-    #notificationModal .modal-content { background:#fff; margin:10% auto; padding:20px; width:300px; border-radius:6px; }
-    .close-btn { float:right; cursor:pointer; }
-  </style>
+  <link rel="stylesheet" href="style.css">
 </head>
 <body>
+  <!-- Navbar -->
+  <nav class="navbar">
+    <div class="logo">MinhaSocial</div>
+    <div class="nav-actions">
+      <button id="logoutBtn" class="btn btn-logout" style="display:none;">Sair</button>
+    </div>
+  </nav>
 
-  <!-- === AUTENTICAÇÃO === -->
-  <section id="auth">
-    <h2 id="authTitle">Autenticação</h2>
-    <form id="authForm">
-      <input type="text" id="username" placeholder="Nome de utilizador (só no registo)" style="display:none;"><br>
-      <input type="email" id="email" placeholder="Email"><br>
-      <input type="password" id="password" placeholder="Password"><br>
-      <button type="submit" id="authBtn">Entrar</button>
-    </form>
-    <button id="googleAuthBtn">Entrar com Google</button>
-    <p><a href="#" id="toggleAuth">Criar conta</a></p>
-    <div id="authMessage" style="margin-top:10px; color:red;"></div>
+  <!-- Autenticação -->
+  <section id="authSection" class="auth-section">
+    <div class="auth-box">
+      <h2 id="authTitle">Entrar</h2>
+      <form id="authForm">
+        <input type="text" id="username" placeholder="Nome de utilizador" style="display:none;">
+        <input type="email" id="email" placeholder="Email" required>
+        <input type="password" id="password" placeholder="Palavra-passe" required>
+        <button type="submit" id="authBtn" class="btn">Entrar</button>
+      </form>
+      <p><a href="#" id="toggleAuthLink">Criar conta</a></p>
+      <button id="googleAuthBtn" class="btn btn-google">Entrar com Google</button>
+      <div id="authMessage" class="auth-message"></div>
+    </div>
   </section>
 
-  <!-- === APP === -->
-  <section id="app">
-    <button id="logoutBtn">Sair</button>
-    <h2>Feed</h2>
-    <form id="postForm">
-      <input type="text" id="caption" placeholder="Escreve algo...">
-      <button type="submit">Publicar</button>
-    </form>
-    <div id="feedPosts"></div>
-
-    <h2>Perfil</h2>
-    <div id="profileHeader"></div>
-    <div id="profilePhotos"></div>
-
-    <h2>Pesquisa</h2>
-    <input type="text" id="searchInput" placeholder="Procurar utilizadores...">
-    <div id="results"></div>
-
-    <h2>Chat</h2>
-    <button id="publicChatBtn" class="active">Chat Público</button>
-    <button id="dmsBtn">Mensagens Privadas</button>
-
-    <div id="publicChat" class="active">
-      <div id="publicChatBox"></div>
-      <form id="publicMsgForm">
-        <input type="text" id="publicMsgInput" placeholder="Escreve...">
-        <button type="submit">Enviar</button>
-      </form>
+  <!-- Feed -->
+  <section id="feedSection" class="feed-section" style="display:none;">
+    <div class="post-box">
+      <textarea id="postInput" placeholder="Escreve algo..."></textarea>
+      <button id="postBtn" class="btn">Publicar</button>
     </div>
-
-    <div id="dms" class="hidden">
-      <div id="dmUserList"></div>
-      <div id="privateChatBox"></div>
-      <form id="dmMsgForm" style="display:none;">
-        <input type="text" id="dmMsgInput" placeholder="Escreve...">
-        <button type="submit">Enviar</button>
-      </form>
-    </div>
-
-    <h2>Notificações</h2>
-    <button id="notificationBtn">Ver notificações</button>
-    <div id="notificationModal">
-      <div class="modal-content">
-        <span class="close-btn">&times;</span>
-        <ul id="notificationList"></ul>
-      </div>
-    </div>
+    <div id="feed"></div>
   </section>
 
   <script type="module" src="script.js"></script>
