@@ -25,7 +25,13 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 const auth = getAuth(app);
+
+// === Google Provider ===
 const provider = new GoogleAuthProvider();
+provider.setCustomParameters({
+  client_id: "837381193847-cp1asre7t3ubmunq600v3qkq9m7vca98.apps.googleusercontent.com",
+  prompt: "select_account"
+});
 
 // === ELEMENTOS DO DOM ===
 const authSection = document.getElementById("auth");
@@ -36,9 +42,8 @@ const authBtn = document.getElementById("authBtn");
 const googleAuthBtn = document.getElementById("googleAuthBtn");
 const usernameInput = document.getElementById("username");
 const emailInput = document.getElementById("email");
-const passwordInput = document.getElementById("password");
-const authMessage = document.getElementById("authMessage");
 const logoutBtn = document.getElementById("logoutBtn");
+const authMessage = document.getElementById("authMessage");
 
 const postForm = document.getElementById("postForm");
 const feedPosts = document.getElementById("feedPosts");
@@ -73,36 +78,29 @@ let currentDMUser = null;
 // === AUTENTICAÇÃO ===
 authForm.addEventListener("submit", async (e) => {
   e.preventDefault();
-
   const username = usernameInput.value.trim();
-  const password = passwordInput.value.trim();
-  const email = `${username}@minhasocial.com`; // Geração de email para o Firebase
-
-  if (!username || !password) {
-    authMessage.style.color = "red";
-    authMessage.textContent = "⚠️ Por favor, preencha todos os campos.";
-    return;
-  }
+  const email = emailInput.value.trim();
+  const password = document.getElementById("password").value.trim();
 
   try {
     if (isLoginMode) {
-      // Login com email gerado
-      await signInWithEmailAndPassword(auth, email, password);
+      const userCredential = await signInWithEmailAndPassword(auth, email, password);
+      currentUser = userCredential.user;
       authMessage.style.color = "green";
       authMessage.textContent = "✅ Login bem-sucedido!";
     } else {
-      // Registo com email gerado
       const userCredential = await createUserWithEmailAndPassword(auth, email, password);
       currentUser = userCredential.user;
 
       await setDoc(doc(db, "users", currentUser.uid), {
-        name: username,
+        name: username || email.split("@")[0],
         email: email,
         bio: "",
         profilePicUrl: null,
         following: [],
         followers: []
       });
+
       authMessage.style.color = "green";
       authMessage.textContent = "🎉 Conta criada com sucesso!";
     }
@@ -117,14 +115,13 @@ authForm.addEventListener("submit", async (e) => {
 toggleAuthLink.addEventListener("click", (e) => {
   e.preventDefault();
   isLoginMode = !isLoginMode;
-  authMessage.textContent = "";
 
   if (isLoginMode) {
-    usernameInput.placeholder = "Nome de Utilizador";
+    usernameInput.style.display = "none";
     authBtn.textContent = "Entrar";
     toggleAuthLink.textContent = "Criar conta";
   } else {
-    usernameInput.placeholder = "Escolha um Nome de Utilizador";
+    usernameInput.style.display = "block";
     authBtn.textContent = "Criar conta";
     toggleAuthLink.textContent = "Já tenho conta";
   }
@@ -135,6 +132,7 @@ googleAuthBtn.addEventListener("click", async () => {
   try {
     const result = await signInWithPopup(auth, provider);
     const user = result.user;
+
     const userRef = doc(db, "users", user.uid);
     const snap = await getDoc(userRef);
 
@@ -198,7 +196,7 @@ function carregarFeed() {
   const q = query(collection(db, "posts"), orderBy("createdAt", "desc"));
   onSnapshot(q, async (snapshot) => {
     feedPosts.innerHTML = "";
-    snapshot.forEach(async (docSnap) => {
+    for (let docSnap of snapshot.docs) {
       const post = docSnap.data();
       const userSnap = await getDoc(doc(db, "users", post.userId));
       const user = userSnap.data();
@@ -209,7 +207,7 @@ function carregarFeed() {
         <p>${post.caption}</p>
       `;
       feedPosts.appendChild(div);
-    });
+    }
   });
 }
 
@@ -274,18 +272,19 @@ function carregarChatPublico() {
   const q = query(collection(db, "publicChat"), orderBy("createdAt", "asc"));
   onSnapshot(q, async (snapshot) => {
     publicChatBox.innerHTML = "";
-    snapshot.forEach(async (docSnap) => {
+    for (let docSnap of snapshot.docs) {
       const msg = docSnap.data();
       const userSnap = await getDoc(doc(db, "users", msg.userId));
       const user = userSnap.data();
       const p = document.createElement("p");
+      p.classList.add("chat-message");
       p.innerHTML = `<strong>${user?.name}:</strong> ${msg.text}`;
       publicChatBox.appendChild(p);
-    });
+    }
   });
 }
 
-// === DM (mensagens privadas) ===
+// === DM ===
 async function carregarUtilizadoresDM() {
   const q = query(collection(db, "users"));
   onSnapshot(q, (snapshot) => {
@@ -306,25 +305,16 @@ function abrirDM(userId, name) {
   currentDMUser = userId;
   privateChatBox.style.display = "block";
   dmMsgForm.style.display = "flex";
-
-  // Cria um elemento para as mensagens
-  const messagesContainer = document.createElement('div');
-  messagesContainer.id = 'dmMessagesContainer';
-  privateChatBox.innerHTML = `<h4>Chat com ${name}</h4>`;
-  privateChatBox.appendChild(messagesContainer);
-
   const chatId = [currentUser.uid, userId].sort().join("_");
   const q = query(collection(db, "dms", chatId, "messages"), orderBy("createdAt", "asc"));
-  onSnapshot(q, (snapshot) => {
-    messagesContainer.innerHTML = ''; // Limpa antes de adicionar as mensagens
+  onSnapshot(q, async (snapshot) => {
+    privateChatBox.innerHTML = `<h4>Chat com ${name}</h4>`;
     snapshot.forEach((docSnap) => {
       const msg = docSnap.data();
       const p = document.createElement("p");
       p.innerHTML = `<strong>${msg.sender === currentUser.uid ? "Eu" : name}:</strong> ${msg.text}`;
-      messagesContainer.appendChild(p);
+      privateChatBox.appendChild(p);
     });
-    // Scroll para o fim
-    privateChatBox.scrollTop = privateChatBox.scrollHeight;
   });
 }
 
@@ -366,4 +356,3 @@ window.onclick = (event) => {
     notificationModal.style.display = "none";
   }
 };
-                     
