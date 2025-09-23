@@ -35,7 +35,9 @@ const toggleAuthLink = document.getElementById("toggleAuth");
 const authBtn = document.getElementById("authBtn");
 const googleAuthBtn = document.getElementById("googleAuthBtn");
 const usernameInput = document.getElementById("username");
+const emailInput = document.getElementById("email");
 const passwordInput = document.getElementById("password");
+const authMessage = document.getElementById("authMessage");
 const logoutBtn = document.getElementById("logoutBtn");
 
 const postForm = document.getElementById("postForm");
@@ -68,79 +70,52 @@ let isLoginMode = true;
 let currentUser = null;
 let currentDMUser = null;
 
-// === Função auxiliar para trocar secções (garante que existe a secção) ===
-function mostrar(sectionId) {
-  document.querySelectorAll('.content-section').forEach(section => {
-    section.style.display = 'none';
-  });
-  const el = document.getElementById(sectionId);
-  if (el) el.style.display = 'block';
-}
-
-// === Inicialização UI ao carregar a página ===
-document.addEventListener('DOMContentLoaded', () => {
-  // assegurar estado inicial do campo username (visível apenas no modo criar conta)
-  usernameInput.style.display = isLoginMode ? 'none' : 'block';
-
-  // se houver query param ?section=..., mostramos essa secção (navegação directa)
-  const url = new URL(window.location.href);
-  const sectionId = url.searchParams.get('section') || 'feed';
-  // não presumimos que 'feed' exista — chamamos mostrar só se existir
-  if (document.getElementById(sectionId)) mostrar(sectionId);
-  else if (document.getElementById('feed')) mostrar('feed');
-});
-
 // === AUTENTICAÇÃO ===
 authForm.addEventListener("submit", async (e) => {
   e.preventDefault();
 
-  // Usamos username + password; criamos email artificial para o Firebase
-  const username = usernameInput.value?.trim();
-  const password = passwordInput.value?.trim();
-
-  if (!username) {
-    alert("Por favor indique um nome de utilizador (username).");
-    return;
-  }
-  if (!password) {
-    alert("Por favor indique uma password.");
-    return;
-  }
-
-  // gerar email artificial (não enviares emails reais)
-  const email = `${username}@minhasocial.com`;
+  const username = usernameInput.value.trim();
+  const email = emailInput.value.trim();
+  const password = passwordInput.value.trim();
 
   try {
     if (isLoginMode) {
-      // LOGIN
-      await signInWithEmailAndPassword(auth, email, password);
-      // onAuthStateChanged vai tratar do resto
+      // Login normal
+      const userCredential = await signInWithEmailAndPassword(auth, email, password);
+      currentUser = userCredential.user;
+      authMessage.style.color = "green";
+      authMessage.textContent = "✅ Login bem-sucedido!";
     } else {
-      // REGISTO
+      // Registo novo
       const userCredential = await createUserWithEmailAndPassword(auth, email, password);
-      // criar documento de utilizador no Firestore
-      await setDoc(doc(db, "users", userCredential.user.uid), {
-        name: username,
+      currentUser = userCredential.user;
+
+      await setDoc(doc(db, "users", currentUser.uid), {
+        name: username || email.split("@")[0],
         email: email,
         bio: "",
         profilePicUrl: null,
         following: [],
         followers: []
       });
-      // depois de registo, onAuthStateChanged vai disparar
+
+      authMessage.style.color = "green";
+      authMessage.textContent = "🎉 Conta criada com sucesso!";
     }
   } catch (error) {
     console.error("Erro de autenticação:", error);
-    alert("Erro: " + (error.message || error));
+    authMessage.style.color = "red";
+    authMessage.textContent = "⚠️ " + error.message;
   }
 });
 
-// Alternar login/registro - mostra/esconde campo username e altera textos
+// Alternar login/registro
 toggleAuthLink.addEventListener("click", (e) => {
   e.preventDefault();
   isLoginMode = !isLoginMode;
+
   if (isLoginMode) {
-    usernameInput.style.display = "block"; // para o teu fluxo mantemos o username sempre visível
+    usernameInput.style.display = "none";
     authBtn.textContent = "Entrar";
     toggleAuthLink.textContent = "Criar conta";
   } else {
@@ -150,55 +125,46 @@ toggleAuthLink.addEventListener("click", (e) => {
   }
 });
 
-// Nota: optei por manter username sempre visível porque o fluxo de email artificial depende dele.
-// Se preferires esconder no modo de login, altera usernameInput.style.display conforme necessário.
-
-// === LOGIN COM GOOGLE ===
-googleAuthBtn?.addEventListener("click", async () => {
+// Google login
+googleAuthBtn.addEventListener("click", async () => {
   try {
     const result = await signInWithPopup(auth, provider);
     const user = result.user;
     const userRef = doc(db, "users", user.uid);
     const snap = await getDoc(userRef);
+
     if (!snap.exists()) {
       await setDoc(userRef, {
-        name: user.displayName || user.email.split('@')[0],
+        name: user.displayName,
         email: user.email,
         bio: "",
-        profilePicUrl: user.photoURL || null,
+        profilePicUrl: user.photoURL,
         following: [],
         followers: []
       });
     }
+
+    authMessage.style.color = "green";
+    authMessage.textContent = "✅ Login com Google feito!";
   } catch (err) {
     console.error("Erro Google:", err);
-    alert("Erro Google: " + (err.message || err));
+    authMessage.style.color = "red";
+    authMessage.textContent = "⚠️ " + err.message;
   }
 });
 
-// === LOGOUT ===
-logoutBtn?.addEventListener("click", async () => {
-  try {
-    await signOut(auth);
-  } catch (err) {
-    console.error("Erro no logout:", err);
-  }
+// Logout
+logoutBtn.addEventListener("click", async () => {
+  await signOut(auth);
 });
 
-// === ESTADO DO UTILIZADOR (observador) ===
+// Estado do utilizador
 onAuthStateChanged(auth, (user) => {
   if (user) {
     currentUser = user;
     authSection.style.display = "none";
     appSection.style.display = "block";
 
-    // mostrar secção a partir do URL ?section=... ou mostrar feed por defeito
-    const url = new URL(window.location.href);
-    const sectionId = url.searchParams.get('section') || 'feed';
-    if (document.getElementById(sectionId)) mostrar(sectionId);
-    else mostrar('feed');
-
-    // carregar funcionalidades (só se currentUser existir)
     carregarFeed();
     carregarPerfil();
     carregarChatPublico();
@@ -211,25 +177,16 @@ onAuthStateChanged(auth, (user) => {
   }
 });
 
-// === FEED / PUBLICAÇÃO ===
-postForm?.addEventListener("submit", async (e) => {
+// === FEED ===
+postForm.addEventListener("submit", async (e) => {
   e.preventDefault();
-  if (!currentUser) {
-    alert("Tem de estar autenticado para publicar.");
-    return;
-  }
-  const caption = document.getElementById("caption")?.value || "";
-  try {
-    await addDoc(collection(db, "posts"), {
-      userId: currentUser.uid,
-      caption: caption,
-      createdAt: serverTimestamp()
-    });
-    if (document.getElementById("caption")) document.getElementById("caption").value = "";
-  } catch (err) {
-    console.error("Erro ao publicar:", err);
-    alert("Erro ao publicar: " + (err.message || err));
-  }
+  const caption = document.getElementById("caption").value;
+  await addDoc(collection(db, "posts"), {
+    userId: currentUser.uid,
+    caption: caption,
+    createdAt: serverTimestamp()
+  });
+  document.getElementById("caption").value = "";
 });
 
 function carregarFeed() {
@@ -238,122 +195,74 @@ function carregarFeed() {
     feedPosts.innerHTML = "";
     for (let docSnap of snapshot.docs) {
       const post = docSnap.data();
-      // proteção se post.userId for indefinido
-      const userId = post.userId || null;
-      let user = null;
-      if (userId) {
-        try {
-          const userSnap = await getDoc(doc(db, "users", userId));
-          user = userSnap.exists() ? userSnap.data() : { name: "Anónimo" };
-        } catch (err) {
-          console.warn("Erro getUser para post:", err);
-          user = { name: "Anónimo" };
-        }
-      } else {
-        user = { name: "Anónimo" };
-      }
-
+      const userSnap = await getDoc(doc(db, "users", post.userId));
+      const user = userSnap.data();
       const div = document.createElement("div");
       div.classList.add("post");
-      const createdAtText = post.createdAt && post.createdAt.seconds
-        ? new Date(post.createdAt.seconds * 1000).toLocaleString()
-        : "";
       div.innerHTML = `
-        <h4>${escapeHtml(user?.name || "Anónimo")}</h4>
-        <small>${createdAtText}</small>
-        <p>${escapeHtml(post.caption || "")}</p>
+        <h4>${user?.name || "Anónimo"}</h4>
+        <p>${post.caption}</p>
       `;
       feedPosts.appendChild(div);
     }
-  }, (err) => {
-    console.error("Erro snapshot feed:", err);
   });
 }
 
 // === PERFIL ===
-async function carregarPerfil(targetUserId = null) {
-  // se targetUserId não for passado, usamos o currentUser
-  const uid = targetUserId || (currentUser ? currentUser.uid : null);
-  if (!uid) return;
-
-  try {
-    const userRef = doc(db, "users", uid);
-    const snap = await getDoc(userRef);
-    if (snap.exists()) {
-      const data = snap.data();
-      profileHeader.innerHTML = `
-        <h2>${escapeHtml(data.name || "Sem nome")}</h2>
-        <p>${escapeHtml(data.bio || "Sem biografia")}</p>
-      `;
-    } else {
-      profileHeader.innerHTML = `<p>Utilizador não encontrado.</p>`;
-    }
-  } catch (err) {
-    console.error("Erro carregarPerfil:", err);
+async function carregarPerfil() {
+  const userRef = doc(db, "users", currentUser.uid);
+  const snap = await getDoc(userRef);
+  if (snap.exists()) {
+    const data = snap.data();
+    profileHeader.innerHTML = `
+      <h2>${data.name}</h2>
+      <p>${data.bio || "Sem biografia"}</p>
+    `;
   }
 }
 
-// === PESQUISA DE UTILIZADORES ===
-searchInput?.addEventListener("keyup", async () => {
-  const term = (searchInput.value || "").trim().toLowerCase();
-  if (!term) {
+// === PESQUISA ===
+searchInput.addEventListener("keyup", async () => {
+  const term = searchInput.value.trim().toLowerCase();
+  if (term === "") {
     results.innerHTML = "";
     return;
   }
-  try {
-    const q = query(collection(db, "users"), where("name", ">=", term), where("name", "<=", term + "\uf8ff"));
-    const querySnap = await getDocs(q);
-    results.innerHTML = "";
-    querySnap.forEach((docSnap) => {
-      const user = docSnap.data();
-      const div = document.createElement("div");
-      div.className = "search-item";
-      div.textContent = user.name || "Sem nome";
-      // quando clicam, mostramos o perfil desse user
-      div.onclick = () => {
-        if (document.getElementById('profile')) mostrar('profile');
-        carregarPerfil(docSnap.id);
-      };
-      results.appendChild(div);
-    });
-  } catch (err) {
-    console.error("Erro pesquisa:", err);
-  }
+  const q = query(collection(db, "users"), where("name", ">=", term), where("name", "<=", term + "\uf8ff"));
+  const querySnap = await getDocs(q);
+  results.innerHTML = "";
+  querySnap.forEach((docSnap) => {
+    const user = docSnap.data();
+    const div = document.createElement("div");
+    div.textContent = user.name;
+    results.appendChild(div);
+  });
 });
 
-// === CHAT PÚBLICO / UI toggle ===
-publicChatBtn?.addEventListener('click', () => {
+// === CHAT PÚBLICO ===
+publicChatBtn.addEventListener('click', () => {
   publicChatBtn.classList.add('active');
   dmsBtn.classList.remove('active');
   publicChatContainer.classList.add('active');
   dmsContainer.classList.remove('active');
 });
-dmsBtn?.addEventListener('click', () => {
+dmsBtn.addEventListener('click', () => {
   dmsBtn.classList.add('active');
   publicChatBtn.classList.remove('active');
   publicChatContainer.classList.remove('active');
   dmsContainer.classList.add('active');
 });
 
-// === ENVIAR MENSAGEM PÚBLICA ===
-publicMsgForm?.addEventListener("submit", async (e) => {
+publicMsgForm.addEventListener("submit", async (e) => {
   e.preventDefault();
-  if (!currentUser) {
-    alert("Tem de estar autenticado para enviar mensagens.");
-    return;
-  }
-  const text = (publicMsgInput.value || "").trim();
+  const text = publicMsgInput.value;
   if (!text) return;
-  try {
-    await addDoc(collection(db, "publicChat"), {
-      userId: currentUser.uid,
-      text: text,
-      createdAt: serverTimestamp()
-    });
-    publicMsgInput.value = "";
-  } catch (err) {
-    console.error("Erro enviar msg pública:", err);
-  }
+  await addDoc(collection(db, "publicChat"), {
+    userId: currentUser.uid,
+    text: text,
+    createdAt: serverTimestamp()
+  });
+  publicMsgInput.value = "";
 });
 
 function carregarChatPublico() {
@@ -362,125 +271,84 @@ function carregarChatPublico() {
     publicChatBox.innerHTML = "";
     for (let docSnap of snapshot.docs) {
       const msg = docSnap.data();
-      let userName = "Anónimo";
-      if (msg.userId) {
-        try {
-          const userSnap = await getDoc(doc(db, "users", msg.userId));
-          if (userSnap.exists()) userName = userSnap.data().name || userName;
-        } catch (err) {
-          console.warn("Erro obter user da mensagem pública:", err);
-        }
-      }
+      const userSnap = await getDoc(doc(db, "users", msg.userId));
+      const user = userSnap.data();
       const p = document.createElement("p");
-      p.innerHTML = `<strong>${escapeHtml(userName)}:</strong> ${escapeHtml(msg.text || "")}`;
+      p.innerHTML = `<strong>${user?.name}:</strong> ${msg.text}`;
       publicChatBox.appendChild(p);
     }
-  }, (err) => {
-    console.error("Erro snapshot chat público:", err);
   });
 }
 
 // === DM (mensagens privadas) ===
 async function carregarUtilizadoresDM() {
-  // escuta todos os users para lista de DM (menos o próprio)
   const q = query(collection(db, "users"));
   onSnapshot(q, (snapshot) => {
     dmUserList.innerHTML = "";
     snapshot.forEach((docSnap) => {
-      if (!currentUser) return;
-      if (docSnap.id === currentUser.uid) return;
-      const user = docSnap.data();
-      const btn = document.createElement("button");
-      btn.className = "dm-user-btn";
-      btn.textContent = user.name || "Sem nome";
-      btn.onclick = () => abrirDM(docSnap.id, user.name || "Utilizador");
-      dmUserList.appendChild(btn);
+      if (docSnap.id !== currentUser.uid) {
+        const user = docSnap.data();
+        const btn = document.createElement("button");
+        btn.textContent = user.name;
+        btn.onclick = () => abrirDM(docSnap.id, user.name);
+        dmUserList.appendChild(btn);
+      }
     });
-  }, (err) => {
-    console.error("Erro carregarUtilizadoresDM:", err);
   });
 }
 
 function abrirDM(userId, name) {
-  if (!currentUser) return;
   currentDMUser = userId;
   privateChatBox.style.display = "block";
   dmMsgForm.style.display = "flex";
-  privateChatBox.innerHTML = `<h4>Chat com ${escapeHtml(name)}</h4>`;
-
-  // cada chat tem id composto por uids ordenados
   const chatId = [currentUser.uid, userId].sort().join("_");
   const q = query(collection(db, "dms", chatId, "messages"), orderBy("createdAt", "asc"));
-  onSnapshot(q, (snapshot) => {
-    privateChatBox.innerHTML = `<h4>Chat com ${escapeHtml(name)}</h4>`;
+  onSnapshot(q, async (snapshot) => {
+    privateChatBox.innerHTML = `<h4>Chat com ${name}</h4>`;
     snapshot.forEach((docSnap) => {
       const msg = docSnap.data();
-      const fromMe = msg.sender === currentUser.uid;
       const p = document.createElement("p");
-      p.innerHTML = `<strong>${fromMe ? "Eu" : escapeHtml(name)}:</strong> ${escapeHtml(msg.text || "")}`;
+      p.innerHTML = `<strong>${msg.sender === currentUser.uid ? "Eu" : name}:</strong> ${msg.text}`;
       privateChatBox.appendChild(p);
     });
-  }, (err) => {
-    console.error("Erro snapshot DM:", err);
   });
 }
 
-dmMsgForm?.addEventListener("submit", async (e) => {
+dmMsgForm.addEventListener("submit", async (e) => {
   e.preventDefault();
-  if (!currentUser || !currentDMUser) return;
-  const text = (dmMsgInput.value || "").trim();
-  if (!text) return;
+  const text = dmMsgInput.value;
+  if (!text || !currentDMUser) return;
   const chatId = [currentUser.uid, currentDMUser].sort().join("_");
-  try {
-    await addDoc(collection(db, "dms", chatId, "messages"), {
-      sender: currentUser.uid,
-      text: text,
-      createdAt: serverTimestamp()
-    });
-    dmMsgInput.value = "";
-  } catch (err) {
-    console.error("Erro enviar DM:", err);
-  }
+  await addDoc(collection(db, "dms", chatId, "messages"), {
+    sender: currentUser.uid,
+    text: text,
+    createdAt: serverTimestamp()
+  });
+  dmMsgInput.value = "";
 });
 
 // === NOTIFICAÇÕES ===
 function carregarNotificacoes() {
-  if (!currentUser) return;
-  // assumimos uma colecção /notifications/{uid}/items
   const q = query(collection(db, "notifications", currentUser.uid, "items"), orderBy("createdAt", "desc"));
   onSnapshot(q, (snapshot) => {
     notificationList.innerHTML = "";
     snapshot.forEach((docSnap) => {
       const notif = docSnap.data();
       const li = document.createElement("li");
-      li.textContent = notif.text || "(sem texto)";
+      li.textContent = notif.text;
       notificationList.appendChild(li);
     });
-  }, (err) => {
-    console.error("Erro carregarNotificacoes:", err);
   });
 }
 
-notificationBtn?.addEventListener('click', () => {
-  if (notificationModal) notificationModal.style.display = "block";
-});
-closeBtn?.addEventListener('click', () => {
-  if (notificationModal) notificationModal.style.display = "none";
-});
-window.addEventListener('click', (event) => {
-  if (event.target === notificationModal) {
+notificationBtn.onclick = () => {
+  notificationModal.style.display = "block";
+};
+closeBtn.onclick = () => {
+  notificationModal.style.display = "none";
+};
+window.onclick = (event) => {
+  if (event.target == notificationModal) {
     notificationModal.style.display = "none";
   }
-});
-
-// === UTILIDADES ===
-// função simples para escapar HTML (prevenção XSS básica)
-function escapeHtml(unsafe) {
-  if (!unsafe && unsafe !== 0) return "";
-  return String(unsafe)
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;")
-    .replace(/"/g, "&quot;")
-    .replace(/'/g, "&#039;");
-      }
+};
