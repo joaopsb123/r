@@ -75,30 +75,34 @@ authForm.addEventListener("submit", async (e) => {
   e.preventDefault();
 
   const username = usernameInput.value.trim();
-  const email = emailInput.value.trim();
   const password = passwordInput.value.trim();
+  const email = `${username}@minhasocial.com`; // Geração de email para o Firebase
+
+  if (!username || !password) {
+    authMessage.style.color = "red";
+    authMessage.textContent = "⚠️ Por favor, preencha todos os campos.";
+    return;
+  }
 
   try {
     if (isLoginMode) {
-      // Login normal
-      const userCredential = await signInWithEmailAndPassword(auth, email, password);
-      currentUser = userCredential.user;
+      // Login com email gerado
+      await signInWithEmailAndPassword(auth, email, password);
       authMessage.style.color = "green";
       authMessage.textContent = "✅ Login bem-sucedido!";
     } else {
-      // Registo novo
+      // Registo com email gerado
       const userCredential = await createUserWithEmailAndPassword(auth, email, password);
       currentUser = userCredential.user;
 
       await setDoc(doc(db, "users", currentUser.uid), {
-        name: username || email.split("@")[0],
+        name: username,
         email: email,
         bio: "",
         profilePicUrl: null,
         following: [],
         followers: []
       });
-
       authMessage.style.color = "green";
       authMessage.textContent = "🎉 Conta criada com sucesso!";
     }
@@ -113,13 +117,14 @@ authForm.addEventListener("submit", async (e) => {
 toggleAuthLink.addEventListener("click", (e) => {
   e.preventDefault();
   isLoginMode = !isLoginMode;
+  authMessage.textContent = "";
 
   if (isLoginMode) {
-    usernameInput.style.display = "none";
+    usernameInput.placeholder = "Nome de Utilizador";
     authBtn.textContent = "Entrar";
     toggleAuthLink.textContent = "Criar conta";
   } else {
-    usernameInput.style.display = "block";
+    usernameInput.placeholder = "Escolha um Nome de Utilizador";
     authBtn.textContent = "Criar conta";
     toggleAuthLink.textContent = "Já tenho conta";
   }
@@ -193,7 +198,7 @@ function carregarFeed() {
   const q = query(collection(db, "posts"), orderBy("createdAt", "desc"));
   onSnapshot(q, async (snapshot) => {
     feedPosts.innerHTML = "";
-    for (let docSnap of snapshot.docs) {
+    snapshot.forEach(async (docSnap) => {
       const post = docSnap.data();
       const userSnap = await getDoc(doc(db, "users", post.userId));
       const user = userSnap.data();
@@ -204,7 +209,7 @@ function carregarFeed() {
         <p>${post.caption}</p>
       `;
       feedPosts.appendChild(div);
-    }
+    });
   });
 }
 
@@ -269,14 +274,14 @@ function carregarChatPublico() {
   const q = query(collection(db, "publicChat"), orderBy("createdAt", "asc"));
   onSnapshot(q, async (snapshot) => {
     publicChatBox.innerHTML = "";
-    for (let docSnap of snapshot.docs) {
+    snapshot.forEach(async (docSnap) => {
       const msg = docSnap.data();
       const userSnap = await getDoc(doc(db, "users", msg.userId));
       const user = userSnap.data();
       const p = document.createElement("p");
       p.innerHTML = `<strong>${user?.name}:</strong> ${msg.text}`;
       publicChatBox.appendChild(p);
-    }
+    });
   });
 }
 
@@ -301,16 +306,25 @@ function abrirDM(userId, name) {
   currentDMUser = userId;
   privateChatBox.style.display = "block";
   dmMsgForm.style.display = "flex";
+
+  // Cria um elemento para as mensagens
+  const messagesContainer = document.createElement('div');
+  messagesContainer.id = 'dmMessagesContainer';
+  privateChatBox.innerHTML = `<h4>Chat com ${name}</h4>`;
+  privateChatBox.appendChild(messagesContainer);
+
   const chatId = [currentUser.uid, userId].sort().join("_");
   const q = query(collection(db, "dms", chatId, "messages"), orderBy("createdAt", "asc"));
-  onSnapshot(q, async (snapshot) => {
-    privateChatBox.innerHTML = `<h4>Chat com ${name}</h4>`;
+  onSnapshot(q, (snapshot) => {
+    messagesContainer.innerHTML = ''; // Limpa antes de adicionar as mensagens
     snapshot.forEach((docSnap) => {
       const msg = docSnap.data();
       const p = document.createElement("p");
       p.innerHTML = `<strong>${msg.sender === currentUser.uid ? "Eu" : name}:</strong> ${msg.text}`;
-      privateChatBox.appendChild(p);
+      messagesContainer.appendChild(p);
     });
+    // Scroll para o fim
+    privateChatBox.scrollTop = privateChatBox.scrollHeight;
   });
 }
 
@@ -352,3 +366,4 @@ window.onclick = (event) => {
     notificationModal.style.display = "none";
   }
 };
+                     
