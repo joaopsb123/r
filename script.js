@@ -276,80 +276,80 @@ function timeSince(date) {
 }
 
 function carregarFeed() {
-  const feedQuery = query(collection(db, "posts"), orderBy("createdAt", "desc"));
-  onSnapshot(feedQuery, async snapshot => {
-    feedPosts.innerHTML = "";
-    const userMap = new Map();
-    for (const doc of snapshot.docs) {
-      const data = doc.data();
-      let userData = userMap.get(data.authorId);
-      if (!userData) {
-        const userDoc = await getDoc(doc(db, "users", data.authorId));
-        userData = userDoc.data();
-        userMap.set(data.authorId, userData);
-      }
-      const formattedTime = data.createdAt ? timeSince(new Date(data.createdAt.seconds * 1000)) : 'agora';
-      const div = document.createElement("div");
-      div.classList.add("post-card");
-      
-      const isMyPost = data.authorId === userId;
-      
-      div.innerHTML = `
-        <div class="post-header">
-          <div class="post-header-left">
-            <img src="${userData.profilePicUrl || 'https://via.placeholder.com/50'}" class="post-profile-pic" alt="Foto de perfil">
-            <span class="user-name" onclick="mostrarPerfil('${data.authorId}')">${userData.name}</span>
-          </div>
-          <span class="post-time">${formattedTime}</span>
-          ${isMyPost ? `<button class="delete-post-btn" data-postid="${doc.id}">🗑️</button>` : ''}
-        </div>
-        ${data.imageUrl ? `<img src="${data.imageUrl}" class="post-image" alt="Imagem do post">` : ''}
-        <p class="post-caption">${data.caption}</p>
-        <div class="post-actions">
-          <button class="like-btn" data-postid="${doc.id}">
-            ❤️ ${data.likes?.length || 0}
-          </button>
-          <button class="comment-btn" data-postid="${doc.id}">
-            💬 Comentar
-          </button>
-        </div>
-        <div class="comments-section" id="comments-${doc.id}">
-          ${data.comments.map(c => `<p class="comment-text"><strong>${c.authorId}</strong>: ${c.text}</p>`).join('')}
-        </div>
-      `;
-      feedPosts.appendChild(div);
+    const feedQuery = query(collection(db, "posts"), orderBy("createdAt", "desc"));
+    onSnapshot(feedQuery, async snapshot => {
+        feedPosts.innerHTML = "";
+        const userMap = new Map();
+        for (const doc of snapshot.docs) {
+            const data = doc.data();
+            let userData = userMap.get(data.authorId);
+            if (!userData) {
+                const userDoc = await getDoc(doc(db, "users", data.authorId));
+                userData = userDoc.data();
+                userMap.set(data.authorId, userData);
+            }
+            const formattedTime = data.createdAt ? timeSince(new Date(data.createdAt.seconds * 1000)) : 'agora';
+            const div = document.createElement("div");
+            div.classList.add("post-card");
 
-      const deleteBtn = div.querySelector('.delete-post-btn');
-      if (deleteBtn) {
-        deleteBtn.addEventListener('click', async () => {
-          if (confirm("Tem certeza que quer apagar esta publicação?")) {
-            await deleteDoc(doc(db, "posts", doc.id));
-          }
-        });
-      }
+            const isMyPost = data.authorId === userId;
 
-      const commentBtn = div.querySelector(`.comment-btn[data-postid="${doc.id}"]`);
-      if(commentBtn){
-        commentBtn.addEventListener('click', () => {
-          const commentText = prompt("Escreva o seu comentário:");
-          if (commentText) {
-            const postRef = doc(db, "posts", doc.id);
-            updateDoc(postRef, {
-              comments: arrayUnion({ authorId: userId, text: commentText, timestamp: serverTimestamp() })
-            });
-          }
-        });
-      }
-    });
+            div.innerHTML = `
+                <div class="post-header">
+                    <div class="post-header-left">
+                        <img src="${userData.profilePicUrl || 'https://via.placeholder.com/50'}" class="post-profile-pic" alt="Foto de perfil">
+                        <span class="user-name" onclick="mostrarPerfil('${data.authorId}')">${userData.name}</span>
+                    </div>
+                    <span class="post-time">${formattedTime}</span>
+                    ${isMyPost ? `<button class="delete-post-btn" data-postid="${doc.id}">🗑️</button>` : ''}
+                </div>
+                ${data.imageUrl ? `<img src="${data.imageUrl}" class="post-image" alt="Imagem do post">` : ''}
+                <p class="post-caption">${data.caption}</p>
+                <div class="post-actions">
+                    <button class="like-btn" data-postid="${doc.id}">
+                        ❤️ ${data.likes?.length || 0}
+                    </button>
+                    <button class="comment-btn" data-postid="${doc.id}">
+                        💬 Comentar
+                    </button>
+                </div>
+                <div class="comments-section" id="comments-${doc.id}">
+                    ${data.comments.map(c => `<p class="comment-text"><strong>${c.authorId}</strong>: ${c.text}</p>`).join('')}
+                </div>
+            `;
+            feedPosts.appendChild(div);
+
+            const deleteBtn = div.querySelector('.delete-post-btn');
+            if (deleteBtn) {
+                deleteBtn.addEventListener('click', async () => {
+                    if (confirm("Tem certeza que quer apagar esta publicação?")) {
+                        await deleteDoc(doc(db, "posts", doc.id));
+                    }
+                });
+            }
+
+            const commentBtn = div.querySelector(`.comment-btn[data-postid="${doc.id}"]`);
+            if(commentBtn){
+                commentBtn.addEventListener('click', () => {
+                    const commentText = prompt("Escreva o seu comentário:");
+                    if (commentText) {
+                        const postRef = doc(db, "posts", doc.id);
+                        updateDoc(postRef, {
+                            comments: arrayUnion({ authorId: userId, text: commentText, timestamp: serverTimestamp() })
+                        });
+                    }
+                });
+            }
+        }
     
-    document.querySelectorAll('.like-btn').forEach(btn => {
-      btn.addEventListener('click', async (e) => {
-        const postId = e.currentTarget.dataset.postid;
-        const postRef = doc(db, "posts", postId);
-        await updateDoc(postRef, { likes: arrayUnion(userId) });
-      });
+        document.querySelectorAll('.like-btn').forEach(btn => {
+            btn.addEventListener('click', async (e) => {
+                const postId = e.currentTarget.dataset.postid;
+                const postRef = doc(db, "posts", postId);
+                await updateDoc(postRef, { likes: arrayUnion(userId) });
+            });
+        });
     });
-  });
 }
 
 // ---------- STORIES ----------
@@ -496,7 +496,6 @@ async function carregarPerfil(targetUserId) {
         if (e.target.textContent === 'Seguir') {
           await seguirUtilizador(userToFollowId);
         } else {
-          // AQUI ESTÁ A CORREÇÃO
           await deixarDeSeguirUtilizador(userToFollowId);
         }
       });
@@ -537,18 +536,4 @@ function carregarFotosDoUtilizador(targetUserId) {
 
 // ---------- MENSAGENS PÚBLICAS E PRIVADAS ----------
 publicChatBtn.addEventListener('click', () => {
-    publicChatBtn.classList.add('active');
-    dmsBtn.classList.remove('active');
-    publicChatContainer.classList.add('active');
-    dmsContainer.classList.remove('active');
-});
-dmsBtn.addEventListener('click', () => {
-    dmsBtn.classList.add('active');
-    publicChatBtn.classList.remove('active');
-    publicChatContainer.classList.remove('active');
-    dmsContainer.classList.add('active');
-});
-
-publicMsgForm.addEventListener("submit", async (e) => {
-  e.preventDefault();
-  const text = document.getElementById("public
+    publicChatBtn.classList.add('act
