@@ -111,9 +111,10 @@ onAuthStateChanged(auth, async (user) => {
 
 authForm.addEventListener("submit", async (e) => {
   e.preventDefault();
-  const email = document.getElementById("email").value;
-  const password = document.getElementById("password").value;
   const username = usernameInput.value;
+  const password = document.getElementById("password").value;
+  // Gerar um email a partir do nome de utilizador
+  const email = `${username}@minhasocial.com`; 
 
   try {
     if (isLoginMode) {
@@ -140,7 +141,7 @@ authForm.addEventListener("submit", async (e) => {
 toggleAuthLink.addEventListener("click", (e) => {
   e.preventDefault();
   isLoginMode = !isLoginMode;
-  usernameInput.style.display = isLoginMode ? "none" : "block";
+  usernameInput.style.display = "block"; // O campo de nome de utilizador está sempre visível
   authBtn.textContent = isLoginMode ? "Entrar" : "Criar conta";
   toggleAuthLink.textContent = isLoginMode ? "Criar conta" : "Entrar";
 });
@@ -536,6 +537,4 @@ publicMsgForm.addEventListener("submit", async (e) => {
 
 function carregarMensagensPublicas() {
   const msgQuery = query(collection(db, "messages"), orderBy("timestamp", "asc"));
-  onSnapshot(msgQuery, (snapshot) => {
-    snapshot.docChanges().forEach((change) => {
-      if (chang
+  onSnapshot(msgQuery, (snaps
