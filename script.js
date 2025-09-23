@@ -1,314 +1,59 @@
-// === Importar Firebase ===
+// Import Firebase
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
-import {
-  getFirestore, collection, addDoc, query, orderBy, onSnapshot,
-  serverTimestamp, doc, getDoc, updateDoc, arrayUnion, setDoc,
-  where, getDocs, arrayRemove, deleteDoc
-} from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+import { getFirestore, collection, addDoc, query, orderBy, onSnapshot, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 
-import {
-  getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword,
-  signOut, onAuthStateChanged, GoogleAuthProvider, signInWithPopup
-} from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
-
-// === Configuração Firebase ===
+// Configuração Firebase
 const firebaseConfig = {
-  apiKey: "AQUI_TUA_API_KEY",
-  authDomain: "AQUI_TEU_DOMINIO.firebaseapp.com",
-  projectId: "AQUI_TEU_PROJETO",
-  storageBucket: "AQUI_TEU_BUCKET",
-  messagingSenderId: "AQUI_TEU_ID",
-  appId: "AQUI_TUA_APPID"
+  apiKey: "AIzaSyAi4ov0jXHiH645K_zXDpO0yOtosZHQ0Ww",
+  authDomain: "socialapp-b67e0.firebaseapp.com",
+  projectId: "socialapp-b67e0",
+  storageBucket: "socialapp-b67e0.firebasestorage.app",
+  messagingSenderId: "798450413930",
+  appId: "1:798450413930:web:a8441ff7a2b7d1d6417513",
+  measurementId: "G-4TGTE5EMWQ"
 };
 
+// Inicializar Firebase
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
-const auth = getAuth(app);
-const provider = new GoogleAuthProvider();
 
-// === ELEMENTOS DO DOM ===
-const authSection = document.getElementById("auth");
-const appSection = document.getElementById("app");
-const authForm = document.getElementById("authForm");
-const toggleAuthLink = document.getElementById("toggleAuth");
-const authBtn = document.getElementById("authBtn");
-const googleAuthBtn = document.getElementById("googleAuthBtn");
-const usernameInput = document.getElementById("username");
-const logoutBtn = document.getElementById("logoutBtn");
+let currentChannel = "geral";
 
-const postForm = document.getElementById("postForm");
-const feedPosts = document.getElementById("feedPosts");
-const profileHeader = document.getElementById("profileHeader");
-const profilePhotos = document.getElementById("profilePhotos");
+// Função para trocar de canal
+function selectChannel(channel) {
+  currentChannel = channel;
+  loadMessages();
+  document.getElementById("msg-list").innerHTML = `<p>A entrar em <b>#${channel}</b>...</p>`;
+}
+window.selectChannel = selectChannel;
 
-const searchInput = document.getElementById("searchInput");
-const results = document.getElementById("results");
-
-const publicChatBox = document.getElementById("publicChatBox");
-const publicMsgForm = document.getElementById("publicMsgForm");
-const publicMsgInput = document.getElementById("publicMsgInput");
-
-const dmUserList = document.getElementById("dmUserList");
-const privateChatBox = document.getElementById("privateChatBox");
-const dmMsgForm = document.getElementById("dmMsgForm");
-const dmMsgInput = document.getElementById("dmMsgInput");
-
-const notificationBtn = document.getElementById("notificationBtn");
-const notificationModal = document.getElementById("notificationModal");
-const notificationList = document.getElementById("notificationList");
-const closeBtn = document.querySelector(".close-btn");
-
-let isLoginMode = true;
-let currentUser = null;
-let currentDMUser = null;
-
-// === AUTENTICAÇÃO ===
-authForm.addEventListener("submit", async (e) => {
-  e.preventDefault();
-  const email = document.getElementById("email").value;
-  const password = document.getElementById("password").value;
-  const username = usernameInput.value;
-
-  try {
-    if (isLoginMode) {
-      await signInWithEmailAndPassword(auth, email, password);
-      alert("Login bem-sucedido!");
-    } else {
-      const userCredential = await createUserWithEmailAndPassword(auth, email, password);
-      await setDoc(doc(db, "users", userCredential.user.uid), {
-        name: username || email.split("@")[0],
-        email: email,
-        bio: "",
-        profilePicUrl: null,
-        following: [],
-        followers: []
-      });
-      alert("Conta criada com sucesso!");
-    }
-  } catch (error) {
-    alert("Erro: " + error.message);
-  }
-});
-
-// Alternar login/registro
-toggleAuthLink.addEventListener("click", (e) => {
-  e.preventDefault();
-  isLoginMode = !isLoginMode;
-  if (isLoginMode) {
-    usernameInput.style.display = "none";
-    authBtn.textContent = "Entrar";
-    toggleAuthLink.textContent = "Criar conta";
-  } else {
-    usernameInput.style.display = "block";
-    authBtn.textContent = "Criar conta";
-    toggleAuthLink.textContent = "Já tenho conta";
-  }
-});
-
-// Google login
-googleAuthBtn.addEventListener("click", async () => {
-  try {
-    const result = await signInWithPopup(auth, provider);
-    const user = result.user;
-    const userRef = doc(db, "users", user.uid);
-    const snap = await getDoc(userRef);
-    if (!snap.exists()) {
-      await setDoc(userRef, {
-        name: user.displayName,
-        email: user.email,
-        bio: "",
-        profilePicUrl: user.photoURL,
-        following: [],
-        followers: []
-      });
-    }
-  } catch (err) {
-    alert("Erro Google: " + err.message);
-  }
-});
-
-// Logout
-logoutBtn.addEventListener("click", async () => {
-  await signOut(auth);
-});
-
-// Estado do utilizador
-onAuthStateChanged(auth, (user) => {
-  if (user) {
-    currentUser = user;
-    authSection.style.display = "none";
-    appSection.style.display = "block";
-    carregarFeed();
-    carregarPerfil();
-    carregarChatPublico();
-    carregarUtilizadoresDM();
-    carregarNotificacoes();
-  } else {
-    currentUser = null;
-    authSection.style.display = "block";
-    appSection.style.display = "none";
-  }
-});
-
-// === FEED ===
-postForm.addEventListener("submit", async (e) => {
-  e.preventDefault();
-  const caption = document.getElementById("caption").value;
-  await addDoc(collection(db, "posts"), {
-    userId: currentUser.uid,
-    caption: caption,
+// Enviar mensagem
+async function sendMessage() {
+  const input = document.getElementById("msgInput");
+  const text = input.value.trim();
+  if (text === "") return;
+  await addDoc(collection(db, "channels", currentChannel, "messages"), {
+    text,
     createdAt: serverTimestamp()
   });
-  document.getElementById("caption").value = "";
-});
-
-function carregarFeed() {
-  const q = query(collection(db, "posts"), orderBy("createdAt", "desc"));
-  onSnapshot(q, async (snapshot) => {
-    feedPosts.innerHTML = "";
-    for (let docSnap of snapshot.docs) {
-      const post = docSnap.data();
-      const userSnap = await getDoc(doc(db, "users", post.userId));
-      const user = userSnap.data();
-      const div = document.createElement("div");
-      div.classList.add("post");
-      div.innerHTML = `
-        <h4>${user?.name || "Anónimo"}</h4>
-        <p>${post.caption}</p>
-      `;
-      feedPosts.appendChild(div);
-    }
-  });
+  input.value = "";
 }
+window.sendMessage = sendMessage;
 
-// === PERFIL ===
-async function carregarPerfil() {
-  const userRef = doc(db, "users", currentUser.uid);
-  const snap = await getDoc(userRef);
-  if (snap.exists()) {
-    const data = snap.data();
-    profileHeader.innerHTML = `
-      <h2>${data.name}</h2>
-      <p>${data.bio || "Sem biografia"}</p>
-    `;
-  }
-}
-
-// === PESQUISA ===
-searchInput.addEventListener("keyup", async () => {
-  const term = searchInput.value.trim().toLowerCase();
-  if (term === "") {
-    results.innerHTML = "";
-    return;
-  }
-  const q = query(collection(db, "users"), where("name", ">=", term), where("name", "<=", term + "\uf8ff"));
-  const querySnap = await getDocs(q);
-  results.innerHTML = "";
-  querySnap.forEach((docSnap) => {
-    const user = docSnap.data();
-    const div = document.createElement("div");
-    div.textContent = user.name;
-    results.appendChild(div);
-  });
-});
-
-// === CHAT PÚBLICO ===
-publicMsgForm.addEventListener("submit", async (e) => {
-  e.preventDefault();
-  const text = publicMsgInput.value;
-  if (!text) return;
-  await addDoc(collection(db, "publicChat"), {
-    userId: currentUser.uid,
-    text: text,
-    createdAt: serverTimestamp()
-  });
-  publicMsgInput.value = "";
-});
-
-function carregarChatPublico() {
-  const q = query(collection(db, "publicChat"), orderBy("createdAt", "asc"));
-  onSnapshot(q, async (snapshot) => {
-    publicChatBox.innerHTML = "";
-    for (let docSnap of snapshot.docs) {
-      const msg = docSnap.data();
-      const userSnap = await getDoc(doc(db, "users", msg.userId));
-      const user = userSnap.data();
-      const p = document.createElement("p");
-      p.innerHTML = `<strong>${user?.name}:</strong> ${msg.text}`;
-      publicChatBox.appendChild(p);
-    }
-  });
-}
-
-// === DM (mensagens privadas) ===
-async function carregarUtilizadoresDM() {
-  const q = query(collection(db, "users"));
-  const snap = await getDocs(q);
-  dmUserList.innerHTML = "";
-  snap.forEach((docSnap) => {
-    if (docSnap.id !== currentUser.uid) {
-      const user = docSnap.data();
-      const btn = document.createElement("button");
-      btn.textContent = user.name;
-      btn.onclick = () => abrirDM(docSnap.id, user.name);
-      dmUserList.appendChild(btn);
-    }
-  });
-}
-
-function abrirDM(userId, name) {
-  currentDMUser = userId;
-  privateChatBox.style.display = "block";
-  dmMsgForm.style.display = "flex";
-  privateChatBox.innerHTML = `<h4>Chat com ${name}</h4>`;
-  const chatId = [currentUser.uid, userId].sort().join("_");
-  const q = query(collection(db, "dms", chatId, "messages"), orderBy("createdAt", "asc"));
-  onSnapshot(q, async (snapshot) => {
-    privateChatBox.innerHTML = `<h4>Chat com ${name}</h4>`;
-    snapshot.forEach((docSnap) => {
-      const msg = docSnap.data();
-      const p = document.createElement("p");
-      p.innerHTML = `<strong>${msg.sender === currentUser.uid ? "Eu" : name}:</strong> ${msg.text}`;
-      privateChatBox.appendChild(p);
-    });
-  });
-}
-
-dmMsgForm.addEventListener("submit", async (e) => {
-  e.preventDefault();
-  const text = dmMsgInput.value;
-  if (!text || !currentDMUser) return;
-  const chatId = [currentUser.uid, currentDMUser].sort().join("_");
-  await addDoc(collection(db, "dms", chatId, "messages"), {
-    sender: currentUser.uid,
-    text: text,
-    createdAt: serverTimestamp()
-  });
-  dmMsgInput.value = "";
-});
-
-// === NOTIFICAÇÕES ===
-function carregarNotificacoes() {
-  const q = query(collection(db, "notifications", currentUser.uid, "items"), orderBy("createdAt", "desc"));
+// Carregar mensagens em tempo real
+function loadMessages() {
+  const q = query(collection(db, "channels", currentChannel, "messages"), orderBy("createdAt"));
   onSnapshot(q, (snapshot) => {
-    notificationList.innerHTML = "";
-    snapshot.forEach((docSnap) => {
-      const notif = docSnap.data();
-      const li = document.createElement("li");
-      li.textContent = notif.text;
-      notificationList.appendChild(li);
+    const msgList = document.getElementById("msg-list");
+    msgList.innerHTML = "";
+    snapshot.forEach((doc) => {
+      const msg = doc.data();
+      const p = document.createElement("p");
+      p.textContent = msg.text || "";
+      msgList.appendChild(p);
     });
   });
 }
 
-notificationBtn.onclick = () => {
-  notificationModal.style.display = "block";
-};
-closeBtn.onclick = () => {
-  notificationModal.style.display = "none";
-};
-window.onclick = (event) => {
-  if (event.target == notificationModal) {
-    notificationModal.style.display = "none";
-  }
-};
+// Iniciar com canal "geral"
+loadMessages();
