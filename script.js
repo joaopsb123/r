@@ -1,15 +1,29 @@
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+import { getFirestore, collection, addDoc, query, orderBy, onSnapshot, serverTimestamp, doc, getDoc, updateDoc, arrayUnion, setDoc, where, getDocs, arrayRemove, deleteDoc } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+import { getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword, onAuthStateChanged, signOut, GoogleAuthProvider, signInWithPopup } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
 
-// SUAS CREDENCIAIS SUPABASE (JÁ INSERIDAS)
-const SUPABASE_URL = 'https://nkvmkgzphkrgwdwfgild.supabase.co';
-const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5rdm1rZ3pwaGtyZ3dkd2ZnaWxkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTg2Mjg0NDYsImV4cCI6MjA3NDIwNDQ0Nn0.Jf7pXgMKrZC0rr75PXTLi0ywbRbrkvvMV_4_uwVT7YI';
+// Firebase config
+const firebaseConfig = {
+  apiKey: "AIzaSyBr9gb7qGFs632l4M9dT6C8sqehQTP8UWE",
+  authDomain: "social-media-93276.firebaseapp.com",
+  projectId: "social-media-93276",
+  storageBucket: "social-media-93276.firebasestorage.app",
+  messagingSenderId: "837381193847",
+  appId: "1:837381193847:web:0b33f09354a8bbb90a0672",
+  measurementId: "G-0JRNSXYYLQ"
+};
 
-const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+// Inicializar Firebase
+const app = initializeApp(firebaseConfig);
+const db = getFirestore(app);
+const auth = getAuth(app);
+const provider = new GoogleAuthProvider();
 
-// --- CLOUDINARY CONFIG ---
+// --- CONFIGURAÇÃO DO CLOUDINARY ---
 const CLOUDINARY_CLOUD_NAME = 'dya1jd0mx';
 const CLOUDINARY_UPLOAD_PRESET = 'Social';
 const CLOUDINARY_URL = `https://api.cloudinary.com/v1_1/${CLOUDINARY_CLOUD_NAME}/upload`;
+// --- FIM DA CONFIGURAÇÃO ---
 
 let userId;
 let currentProfileId;
@@ -45,7 +59,11 @@ const dmMsgForm = document.getElementById("dmMsgForm");
 const searchInput = document.getElementById("searchInput");
 const results = document.getElementById("results");
 const storiesBox = document.getElementById("storiesBox");
-const googleAuthBtn = document.getElementById("googleAuthBtn");
+const lightThemeBtn = document.getElementById("lightThemeBtn");
+const darkThemeBtn = document.getElementById("darkThemeBtn");
+const wallpaperInput = document.getElementById("wallpaperInput");
+const clearWallpaperBtn = document.getElementById("clearWallpaperBtn");
+const googleAuthBtn = document.getElementById("googleAuthBtn"); // Novo elemento
 
 let isLoginMode = true;
 
@@ -70,10 +88,25 @@ function carregarWallpaper() {
   aplicarWallpaper(savedWallpaper);
 }
 
+lightThemeBtn.addEventListener('click', () => aplicarTema('light'));
+darkThemeBtn.addEventListener('click', () => aplicarTema('dark'));
+wallpaperInput.addEventListener('change', async (e) => {
+  const file = e.target.files[0];
+  if (file) {
+    const formData = new FormData();
+    formData.append('file', file);
+    formData.append('upload_preset', CLOUDINARY_UPLOAD_PRESET);
+    const response = await fetch(CLOUDINARY_URL, { method: 'POST', body: formData });
+    const data = await response.json();
+    aplicarWallpaper(data.secure_url);
+  }
+});
+clearWallpaperBtn.addEventListener('click', () => aplicarWallpaper(null));
+
 // ---------- AUTENTICAÇÃO E INICIALIZAÇÃO ----------
-supabase.auth.onAuthStateChange((event, session) => {
-  if (session) {
-    userId = session.user.id;
+onAuthStateChanged(auth, async (user) => {
+  if (user) {
+    userId = user.uid;
     console.log("Utilizador autenticado:", userId);
     authSection.style.display = "none";
     appSection.style.display = "block";
@@ -102,22 +135,19 @@ authForm.addEventListener("submit", async (e) => {
 
   try {
     if (isLoginMode) {
-      const { error } = await supabase.auth.signInWithPassword({ email, password });
-      if (error) throw error;
+      await signInWithEmailAndPassword(auth, email, password);
       alert("Login bem-sucedido!");
     } else {
-      const { data, error } = await supabase.auth.signUp({ 
-        email, 
-        password,
-        options: {
-          data: { name: username }
-        }
+      const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+      await setDoc(doc(db, "users", userCredential.user.uid), {
+        name: username,
+        email: email,
+        bio: "",
+        profilePicUrl: null,
+        following: [],
+        followers: []
       });
-      if (error) throw error;
-      await supabase.from('profiles').insert([
-        { id: data.user.id, name: username, email: email, following: [], followers: [] }
-      ]);
-      alert("Registo bem-sucedido! Verifique o seu email para confirmar.");
+      alert("Registo bem-sucedido!");
     }
   } catch (error) {
     console.error("Erro de autenticação:", error.message);
@@ -134,7 +164,7 @@ toggleAuthLink.addEventListener("click", (e) => {
 });
 
 logoutBtn.addEventListener("click", async () => {
-  await supabase.auth.signOut();
+  await signOut(auth);
   console.log("Sessão terminada.");
 });
 
@@ -142,19 +172,31 @@ logoutBtn.addEventListener("click", async () => {
 if (googleAuthBtn) {
   googleAuthBtn.addEventListener('click', async () => {
     try {
-      const { data, error } = await supabase.auth.signInWithOAuth({
-        provider: 'google',
-        options: {
-          redirectTo: window.location.href
-        }
-      });
-      if (error) throw error;
+      const result = await signInWithPopup(auth, provider);
+      const user = result.user;
+      
+      const userDocRef = doc(db, "users", user.uid);
+      const userDocSnap = await getDoc(userDocRef);
+
+      if (!userDocSnap.exists()) {
+        await setDoc(userDocRef, {
+          name: user.displayName,
+          email: user.email,
+          profilePicUrl: user.photoURL,
+          bio: "",
+          following: [],
+          followers: []
+        });
+      }
+
+      alert("Login com Google bem-sucedido!");
     } catch (error) {
       console.error("Erro no login com Google:", error);
       alert(`Erro no login com Google: ${error.message}`);
     }
   });
 }
+// ----------------------------------------
 
 // ---------- NOTIFICAÇÕES ----------
 notificationBtn.addEventListener("click", () => {
@@ -165,30 +207,23 @@ closeBtn.addEventListener("click", () => {
 });
 
 function carregarNotificacoes() {
-  const notifChannel = supabase.channel('notifications_changes')
-    .on('postgres_changes', { event: '*', schema: 'public', table: 'notifications' }, payload => {
-      // Logic to handle new notifications
-      carregarNotificacoes();
-    })
-    .subscribe();
-
-  supabase.from('notifications').select('*').eq('targetId', userId).order('createdAt', { ascending: false })
-    .then(({ data, error }) => {
-      if (error) throw error;
-      notificationList.innerHTML = "";
-      let unreadCount = 0;
-      data.forEach(notif => {
-        const div = document.createElement("div");
-        div.classList.add("notification-item");
-        if (!notif.read) {
-          div.classList.add("unread");
-          unreadCount++;
-        }
-        div.innerHTML = `<p>${notif.message}</p>`;
-        notificationList.appendChild(div);
-      });
-      notificationCount.textContent = unreadCount > 0 ? unreadCount : "";
+  const notifQuery = query(collection(db, "notifications"), where("targetId", "==", userId), orderBy("createdAt", "desc"));
+  onSnapshot(notifQuery, (snapshot) => {
+    notificationList.innerHTML = "";
+    let unreadCount = 0;
+    snapshot.forEach(doc => {
+      const data = doc.data();
+      const div = document.createElement("div");
+      div.classList.add("notification-item");
+      if (!data.read) {
+        div.classList.add("unread");
+        unreadCount++;
+      }
+      div.innerHTML = `<p>${data.message}</p>`;
+      notificationList.appendChild(div);
     });
+    notificationCount.textContent = unreadCount > 0 ? unreadCount : "";
+  });
 }
 
 // ---------- FEED & POSTS ----------
@@ -209,10 +244,14 @@ postForm.addEventListener("submit", async (e) => {
       imageUrl = data.secure_url;
     }
 
-    const { error } = await supabase.from('posts').insert([
-      { caption, imageUrl, authorId: userId, likes: [], comments: [] }
-    ]);
-    if (error) throw error;
+    await addDoc(collection(db, "posts"), {
+      caption,
+      imageUrl,
+      createdAt: serverTimestamp(),
+      authorId: userId,
+      likes: [],
+      comments: []
+    });
     postForm.reset();
     alert("Post publicado!");
   } catch (error) {
@@ -237,81 +276,80 @@ function timeSince(date) {
 }
 
 function carregarFeed() {
-    supabase.from('posts').select('*').order('createdAt', { ascending: false })
-        .then(async ({ data: posts, error }) => {
-            if (error) throw error;
-            feedPosts.innerHTML = "";
-            const userIds = posts.map(p => p.authorId);
-            const { data: users, error: usersError } = await supabase.from('profiles').select('*').in('id', userIds);
-            if (usersError) throw usersError;
-            const userMap = new Map(users.map(user => [user.id, user]));
-
-            for (const post of posts) {
-                const userData = userMap.get(post.authorId);
-                const formattedTime = post.createdAt ? timeSince(new Date(post.createdAt)) : 'agora';
-                const div = document.createElement("div");
-                div.classList.add("post-card");
-                
-                const isMyPost = post.authorId === userId;
-                
-                div.innerHTML = `
-                  <div class="post-header">
-                      <div class="post-header-left">
-                          <img src="${userData?.profilePicUrl || 'https://via.placeholder.com/50'}" class="post-profile-pic" alt="Foto de perfil">
-                          <span class="user-name" onclick="mostrarPerfil('${post.authorId}')">${userData?.name || 'Utilizador Desconhecido'}</span>
-                      </div>
-                      <span class="post-time">${formattedTime}</span>
-                      ${isMyPost ? `<button class="delete-post-btn" data-postid="${post.id}">🗑️</button>` : ''}
-                  </div>
-                  ${post.imageUrl ? `<img src="${post.imageUrl}" class="post-image" alt="Imagem do post">` : ''}
-                  <p class="post-caption">${post.caption}</p>
-                  <div class="post-actions">
-                      <button class="like-btn" data-postid="${post.id}">
-                          ❤️ ${post.likes?.length || 0}
-                      </button>
-                      <button class="comment-btn" data-postid="${post.id}">
-                          💬 Comentar
-                      </button>
-                  </div>
-                  <div class="comments-section" id="comments-${post.id}">
-                      ${post.comments.map(c => `<p class="comment-text"><strong>${c.authorId}</strong>: ${c.text}</p>`).join('')}
-                  </div>
-                `;
-                feedPosts.appendChild(div);
-
-                const deleteBtn = div.querySelector('.delete-post-btn');
-                if (deleteBtn) {
-                    deleteBtn.addEventListener('click', async () => {
-                        if (confirm("Tem certeza que quer apagar esta publicação?")) {
-                            await supabase.from('posts').delete().eq('id', post.id);
-                        }
-                    });
-                }
-
-                const commentBtn = div.querySelector(`.comment-btn[data-postid="${post.id}"]`);
-                if(commentBtn){
-                    commentBtn.addEventListener('click', () => {
-                        const commentText = prompt("Escreva o seu comentário:");
-                        if (commentText) {
-                            supabase.from('posts').update({ comments: [...post.comments, { authorId: userId, text: commentText, timestamp: new Date() }] }).eq('id', post.id)
-                                .then(({ error }) => { if (error) console.error(error); });
-                        }
-                    });
-                }
+    const feedQuery = query(collection(db, "posts"), orderBy("createdAt", "desc"));
+    onSnapshot(feedQuery, async snapshot => {
+        feedPosts.innerHTML = "";
+        const userMap = new Map();
+        for (const doc of snapshot.docs) {
+            const data = doc.data();
+            let userData = userMap.get(data.authorId);
+            if (!userData) {
+                const userDoc = await getDoc(doc(db, "users", data.authorId));
+                userData = userDoc.data();
+                userMap.set(data.authorId, userData);
             }
-            
-            document.querySelectorAll('.like-btn').forEach(btn => {
-                btn.addEventListener('click', async (e) => {
-                    const postId = e.currentTarget.dataset.postid;
-                    const { data: post, error } = await supabase.from('posts').select('likes').eq('id', postId).single();
-                    if (error) { console.error(error); return; }
-                    
-                    const newLikes = post.likes.includes(userId) ? post.likes.filter(id => id !== userId) : [...post.likes, userId];
-                    
-                    await supabase.from('posts').update({ likes: newLikes }).eq('id', postId);
+            const formattedTime = data.createdAt ? timeSince(new Date(data.createdAt.seconds * 1000)) : 'agora';
+            const div = document.createElement("div");
+            div.classList.add("post-card");
+
+            const isMyPost = data.authorId === userId;
+
+            div.innerHTML = `
+                <div class="post-header">
+                    <div class="post-header-left">
+                        <img src="${userData.profilePicUrl || 'https://via.placeholder.com/50'}" class="post-profile-pic" alt="Foto de perfil">
+                        <span class="user-name" onclick="mostrarPerfil('${data.authorId}')">${userData.name}</span>
+                    </div>
+                    <span class="post-time">${formattedTime}</span>
+                    ${isMyPost ? `<button class="delete-post-btn" data-postid="${doc.id}">🗑️</button>` : ''}
+                </div>
+                ${data.imageUrl ? `<img src="${data.imageUrl}" class="post-image" alt="Imagem do post">` : ''}
+                <p class="post-caption">${data.caption}</p>
+                <div class="post-actions">
+                    <button class="like-btn" data-postid="${doc.id}">
+                        ❤️ ${data.likes?.length || 0}
+                    </button>
+                    <button class="comment-btn" data-postid="${doc.id}">
+                        💬 Comentar
+                    </button>
+                </div>
+                <div class="comments-section" id="comments-${doc.id}">
+                    ${data.comments.map(c => `<p class="comment-text"><strong>${c.authorId}</strong>: ${c.text}</p>`).join('')}
+                </div>
+            `;
+            feedPosts.appendChild(div);
+
+            const deleteBtn = div.querySelector('.delete-post-btn');
+            if (deleteBtn) {
+                deleteBtn.addEventListener('click', async () => {
+                    if (confirm("Tem certeza que quer apagar esta publicação?")) {
+                        await deleteDoc(doc(db, "posts", doc.id));
+                    }
                 });
+            }
+
+            const commentBtn = div.querySelector(`.comment-btn[data-postid="${doc.id}"]`);
+            if(commentBtn){
+                commentBtn.addEventListener('click', () => {
+                    const commentText = prompt("Escreva o seu comentário:");
+                    if (commentText) {
+                        const postRef = doc(db, "posts", doc.id);
+                        updateDoc(postRef, {
+                            comments: arrayUnion({ authorId: userId, text: commentText, timestamp: serverTimestamp() })
+                        });
+                    }
+                });
+            }
+        }
+    
+        document.querySelectorAll('.like-btn').forEach(btn => {
+            btn.addEventListener('click', async (e) => {
+                const postId = e.currentTarget.dataset.postid;
+                const postRef = doc(db, "posts", postId);
+                await updateDoc(postRef, { likes: arrayUnion(userId) });
             });
         });
+    });
 }
 
 // ---------- STORIES ----------
@@ -322,14 +360,14 @@ async function uploadStory(file) {
     formData.append('upload_preset', CLOUDINARY_UPLOAD_PRESET);
     const response = await fetch(CLOUDINARY_URL, { method: 'POST', body: formData });
     const data = await response.json();
-    const expiresAt = new Date().getTime() + 86400000;
+    const expiresAt = new Date().getTime() + 86400000; // 24 horas em milisegundos
 
-    const { error } = await supabase.from('stories').insert([{
+    await addDoc(collection(db, "stories"), {
       imageUrl: data.secure_url,
+      createdAt: serverTimestamp(),
       expiresAt: expiresAt,
       authorId: userId
-    }]);
-    if (error) throw error;
+    });
     alert("História publicada!");
   } catch (error) {
     console.error("Erro ao publicar história:", error);
@@ -338,42 +376,39 @@ async function uploadStory(file) {
 }
 
 function carregarStories() {
-  supabase.from('stories').select('*').order('createdAt', { ascending: false })
-    .then(async ({ data: stories, error }) => {
-      if (error) throw error;
-      storiesBox.innerHTML = "";
-      const now = new Date().getTime();
-      const uniqueAuthors = new Map();
-      const userIds = stories.map(s => s.authorId);
-      const { data: users, error: usersError } = await supabase.from('profiles').select('*').in('id', userIds);
-      if (usersError) throw usersError;
-      const userMap = new Map(users.map(user => [user.id, user]));
+  const storiesQuery = query(collection(db, "stories"), orderBy("createdAt", "desc"));
+  onSnapshot(storiesQuery, async (snapshot) => {
+    storiesBox.innerHTML = "";
+    const now = new Date().getTime();
+    const uniqueAuthors = new Map();
 
-      for (const story of stories) {
-        if (new Date(story.expiresAt).getTime() > now) {
-          if (!uniqueAuthors.has(story.authorId)) {
-            const userData = userMap.get(story.authorId);
-            uniqueAuthors.set(story.authorId, {
-              ...userData,
-              storyUrl: story.imageUrl
-            });
-          }
+    for (const d of snapshot.docs) {
+      const story = d.data();
+      if (story.expiresAt > now) {
+        if (!uniqueAuthors.has(story.authorId)) {
+          const userDoc = await getDoc(doc(db, "users", story.authorId));
+          const userData = userDoc.data();
+          uniqueAuthors.set(story.authorId, {
+            ...userData,
+            storyUrl: story.imageUrl
+          });
         }
       }
+    }
 
-      uniqueAuthors.forEach((userData, authorId) => {
-        const div = document.createElement("div");
-        div.classList.add("story-item");
-        div.innerHTML = `
-          <img src="${userData?.profilePicUrl || 'https://via.placeholder.com/60'}" alt="História de ${userData?.name}">
-          <span class="story-user-name">${userData?.name}</span>
-        `;
-        div.addEventListener('click', () => {
-          alert(`A ver a história de ${userData?.name}: ${userData?.storyUrl}`);
-        });
-        storiesBox.appendChild(div);
+    uniqueAuthors.forEach((userData, authorId) => {
+      const div = document.createElement("div");
+      div.classList.add("story-item");
+      div.innerHTML = `
+        <img src="${userData.profilePicUrl || 'https://via.placeholder.com/60'}" alt="História de ${userData.name}">
+        <span class="story-user-name">${userData.name}</span>
+      `;
+      div.addEventListener('click', () => {
+        alert(`A ver a história de ${userData.name}: ${userData.storyUrl}`);
       });
+      storiesBox.appendChild(div);
     });
+  });
 }
 
 // ---------- PERFIL (COMPLETO) ----------
@@ -384,14 +419,16 @@ function mostrarPerfil(targetUserId) {
 }
 
 async function carregarPerfil(targetUserId) {
-  const { data: userData, error } = await supabase.from('profiles').select('*').eq('id', targetUserId).single();
+  const userRef = doc(db, "users", targetUserId);
+  const userSnap = await getDoc(userRef);
 
-  if (error || !userData) {
+  if (!userSnap.exists()) {
     profileHeader.innerHTML = "<p>Utilizador não encontrado.</p>";
     profilePhotos.innerHTML = "";
     return;
   }
 
+  const userData = userSnap.data();
   const isMyProfile = targetUserId === userId;
 
   profileHeader.innerHTML = `
@@ -406,7 +443,7 @@ async function carregarPerfil(targetUserId) {
     </div>
     ${isMyProfile ? `
       <div class="profile-meta">
-        <p>Membro desde: ${new Date(supabase.auth.session()?.user?.created_at).toLocaleDateString()}</p>
+        <p>Membro desde: ${new Date(auth.currentUser.metadata.creationTime).toLocaleDateString()}</p>
       </div>
       <button onclick="editarPerfil()" class="edit-profile-btn">Editar Perfil</button>
     ` : `
@@ -434,7 +471,7 @@ async function carregarPerfil(targetUserId) {
         const response = await fetch(CLOUDINARY_URL, { method: 'POST', body: formData });
         const data = await response.json();
         const url = data.secure_url;
-        await supabase.from('profiles').update({ profilePicUrl: url }).eq('id', userId);
+        await updateDoc(doc(db, "users", userId), { profilePicUrl: url });
         carregarPerfil(userId);
       }
     });
@@ -469,47 +506,34 @@ async function carregarPerfil(targetUserId) {
 }
 
 async function editarPerfil() {
-  const { data: userData, error } = await supabase.from('profiles').select('*').eq('id', userId).single();
-  if (error) return;
+  const userRef = doc(db, "users", userId);
+  const userSnap = await getDoc(userRef);
+  const userData = userSnap.data();
   const newName = prompt("Introduza o seu novo nome:", userData.name);
   const newBio = prompt("Introduza a sua nova biografia:", userData.bio);
   
   if (newName !== null && newBio !== null) {
-    await supabase.from('profiles').update({ name: newName, bio: newBio }).eq('id', userId);
+    await updateDoc(userRef, { name: newName, bio: newBio });
     carregarPerfil(userId);
   }
 }
 
 function carregarFotosDoUtilizador(targetUserId) {
-    supabase.from('posts').select('*').eq('authorId', targetUserId).order('createdAt', { ascending: false })
-        .then(({ data, error }) => {
-            if (error) throw error;
-            profilePhotos.innerHTML = "";
-            data.forEach((post) => {
-                if (post.imageUrl) {
-                    const img = document.createElement("img");
-                    img.src = post.imageUrl;
-                    img.classList.add("my-photo");
-                    profilePhotos.appendChild(img);
-                }
-            });
-        });
+  const userPostsQuery = query(collection(db, "posts"), where("authorId", "==", targetUserId), orderBy("createdAt", "desc"));
+  onSnapshot(userPostsQuery, (snapshot) => {
+    profilePhotos.innerHTML = "";
+    snapshot.forEach((doc) => {
+      const data = doc.data();
+      if (data.imageUrl) {
+        const img = document.createElement("img");
+        img.src = data.imageUrl;
+        img.classList.add("my-photo");
+        profilePhotos.appendChild(img);
+      }
+    });
+  });
 }
 
 // ---------- MENSAGENS PÚBLICAS E PRIVADAS ----------
 publicChatBtn.addEventListener('click', () => {
-    publicChatBtn.classList.add('active');
-    dmsBtn.classList.remove('active');
-    publicChatContainer.classList.add('active');
-    dmsContainer.classList.remove('active');
-});
-dmsBtn.addEventListener('click', () => {
-    dmsBtn.classList.add('active');
-    publicChatBtn.classList.remove('active');
-    publicChatContainer.classList.remove('active');
-    dmsContainer.classList.add('active');
-});
-
-publicMsgForm.addEventListener("submit", async (e) => {
-  e.preventDefault();
-  const text = document.getElementById("publicMs
+    publicChatBtn.classList.add('act
