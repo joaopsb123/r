@@ -1,144 +1,122 @@
 <!DOCTYPE html>
 <html lang="pt">
 <head>
-  <meta charset="UTF-8">
-  <title>Minha Rede Social</title>
-  <link rel="stylesheet" href="style.css">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Minha Rede Social</title>
+    <link rel="stylesheet" href="style.css">
 </head>
-<body class="light-theme">
-  <div class="main-container">
+<body>
 
-    <section id="auth" class="content-section active">
-      <div class="auth-box">
-        <h1 class="logo auth-logo">Social App</h1>
-        <form id="authForm" class="auth-form">
-          <input type="text" id="username" placeholder="Nome de Utilizador" style="display: none;" required>
-          <input type="email" id="email" placeholder="Email" required>
-          <input type="password" id="password" placeholder="Senha" required>
-          <button type="submit" id="authBtn">Entrar</button>
+    <section id="auth">
+        <h1>Bem-vindo!</h1>
+        <form id="authForm">
+            <input type="email" id="email" placeholder="Email" required>
+            <input type="password" id="password" placeholder="Password" required>
+            <input type="text" id="username" placeholder="Nome de Utilizador" style="display:none;">
+            <button type="submit" id="authBtn">Entrar</button>
         </form>
-        <p class="auth-toggle">
-          Não tem uma conta? <a href="#" id="toggleAuth">Criar conta</a>
-        </p>
-      </div>
+        <button type="button" id="googleAuthBtn" class="google-btn">Login com Google</button>
+        <a href="#" id="toggleAuth">Criar conta</a>
     </section>
 
-    <div id="app" style="display: none;">
-      <header class="app-header">
-        <h1 class="logo">Social App</h1>
-        <div class="header-actions">
-          <button id="notificationBtn" class="notification-btn">
-            🔔<span id="notificationCount" class="notification-count"></span>
-          </button>
-          <button id="logoutBtn" class="logout-btn">Sair</button>
+    <section id="app" style="display:none;">
+
+        <header class="top-nav">
+            <div class="logo">Minha Social</div>
+            <div class="user-actions">
+                <input type="text" id="searchInput" placeholder="Pesquisar utilizadores...">
+                <button id="notificationBtn">Notificações</button>
+                <button id="logoutBtn">Sair</button>
+            </div>
+        </header>
+        
+        <main class="main-content">
+            
+            <div id="storiesBox" class="stories-container"></div>
+            
+            <div id="mainContent">
+
+                <div id="feed" class="content-section">
+                    <h2>Feed de Notícias</h2>
+                    <form id="postForm" class="post-form">
+                        <textarea id="caption" placeholder="O que está a pensar?"></textarea>
+                        <input type="file" id="postImage" accept="image/*">
+                        <button type="submit">Publicar</button>
+                    </form>
+                    <div id="feedPosts" class="feed-posts-container"></div>
+                </div>
+
+                <div id="profile" class="content-section" style="display:none;">
+                    <div id="profileHeader"></div>
+                    <h3>Minhas Fotos</h3>
+                    <div id="profilePhotos" class="profile-photos-container"></div>
+                </div>
+
+                <div id="search" class="content-section" style="display:none;">
+                    <h2>Resultados da Pesquisa</h2>
+                    <div id="results" class="search-results-container"></div>
+                </div>
+
+                <div id="chat" class="content-section" style="display:none;">
+                    <h2>Mensagens</h2>
+                    <div class="chat-toggle-buttons">
+                        <button id="publicChatBtn" class="chat-toggle-btn active">Chat Público</button>
+                        <button id="dmsBtn" class="chat-toggle-btn">Mensagens</button>
+                    </div>
+
+                    <div id="publicChat" class="chat-container active">
+                        <div id="publicChatBox" class="chat-box"></div>
+                        <form id="publicMsgForm" class="chat-form">
+                            <input type="text" id="publicMsgInput" placeholder="Escreva uma mensagem...">
+                            <button type="submit">Enviar</button>
+                        </form>
+                    </div>
+
+                    <div id="dms" class="dms-container">
+                        <div id="dmUserList" class="dm-user-list"></div>
+                        <div id="privateChatBox" class="chat-box" style="display:none;"></div>
+                        <form id="dmMsgForm" class="chat-form" style="display:none;">
+                            <input type="text" id="dmMsgInput" placeholder="Escreva uma mensagem...">
+                            <button type="submit">Enviar</button>
+                        </form>
+                    </div>
+                </div>
+
+            </div>
+        </main>
+
+        <footer class="bottom-nav">
+            <button onclick="mostrar('feed')">Feed</button>
+            <button onclick="mostrar('profile')">Perfil</button>
+            <button onclick="mostrar('chat')">Chat</button>
+            <button onclick="mostrar('search')">Pesquisar</button>
+        </footer>
+
+        <div id="notificationModal" class="modal">
+            <div class="modal-content">
+                <span class="close-btn">&times;</span>
+                <h3>Notificações</h3>
+                <ul id="notificationList"></ul>
+            </div>
         </div>
-      </header>
 
-      <div id="notificationModal" class="modal">
-        <div class="modal-content">
-          <span class="close-btn">&times;</span>
-          <h2 class="modal-title">Notificações</h2>
-          <div id="notificationList" class="notification-list"></div>
-        </div>
-      </div>
+    </section>
 
-      <main class="app-content">
-        <nav class="app-nav">
-          <button class="nav-button active" onclick="mostrar('feed')">
-            <img src="https://img.icons8.com/material-outlined/24/ffffff/home.png" alt="Feed">
-          </button>
-          <button class="nav-button" onclick="mostrar('search')">
-            <img src="https://img.icons8.com/material-outlined/24/ffffff/search.png" alt="Pesquisar">
-          </button>
-          <button class="nav-button" onclick="mostrar('messages')">
-            <img src="https://img.icons8.com/material-outlined/24/ffffff/speech-bubble.png" alt="Mensagens">
-          </button>
-          <button class="nav-button" onclick="mostrar('profile')">
-            <img src="https://img.icons8.com/material-outlined/24/ffffff/user-male-circle.png" alt="Perfil">
-          </button>
-          <button class="nav-button" onclick="mostrar('settings')">
-            ⚙️
-          </button>
-        </nav>
+    <script type="module" src="script.js"></script>
+    <script>
+        // Função para mostrar a secção correta
+        function mostrar(sectionId) {
+            document.querySelectorAll('.content-section').forEach(section => {
+                section.style.display = 'none';
+            });
+            document.getElementById(sectionId).style.display = 'block';
+        }
+        
+        document.addEventListener('DOMContentLoaded', () => {
+            mostrar('feed');
+        });
+    </script>
 
-        <section id="feed" class="content-section active">
-          <div class="stories-bar" id="storiesBox"></div>
-          <div class="post-form-container">
-            <form id="postForm" class="post-form">
-              <input type="file" id="postImage" accept="image/*" class="post-file-input">
-              <input type="text" id="caption" placeholder="O que você está pensando?">
-              <button type="submit" class="post-btn">Publicar</button>
-            </form>
-          </div>
-          <div id="feedPosts" class="feed-posts"></div>
-        </section>
-
-        <section id="profile" class="content-section">
-          <div id="profileHeader" class="profile-info"></div>
-          <div id="profilePhotos" class="my-photos-grid"></div>
-        </section>
-
-        <section id="messages" class="content-section">
-          <div id="dmList" class="dm-list">
-            <button id="publicChatBtn" class="chat-toggle-btn active">Chat Público</button>
-            <button id="dmsBtn" class="chat-toggle-btn">DMs</button>
-            <div id="publicChat" class="chat-container active">
-              <div id="publicChatBox" class="chat-box"></div>
-              <form id="publicMsgForm" class="msg-form">
-                <input type="text" id="publicMsgInput" placeholder="Escreva uma mensagem..." required>
-                <button type="submit" class="msg-btn">Enviar</button>
-              </form>
-            </div>
-            <div id="dms" class="chat-container">
-              <div id="dmUserList" class="dm-user-list"></div>
-              <div id="privateChat" class="chat-box" style="display: none;"></div>
-              <form id="dmMsgForm" class="msg-form" style="display: none;">
-                <input type="text" id="dmMsgInput" placeholder="Escreva uma mensagem..." required>
-                <button type="submit" class="msg-btn">Enviar</button>
-              </form>
-            </div>
-          </div>
-        </section>
-
-        <section id="search" class="content-section">
-          <div class="search-container">
-            <input type="text" id="searchInput" placeholder="Pesquisar..." class="search-input">
-          </div>
-          <div id="results" class="search-results"></div>
-        </section>
-
-        <section id="settings" class="content-section">
-          <div class="settings-panel">
-            <h2>Definições</h2>
-            <div class="setting-item">
-              <span>Tema:</span>
-              <div class="theme-switch">
-                <button id="lightThemeBtn">Claro</button>
-                <button id="darkThemeBtn">Escuro</button>
-              </div>
-            </div>
-            <div class="setting-item">
-              <span>Fundo Personalizado:</span>
-              <input type="file" id="wallpaperInput" accept="image/*">
-            </div>
-            <div class="setting-item">
-              <button id="clearWallpaperBtn" class="danger-btn">Remover Fundo</button>
-            </div>
-          </div>
-        </section>
-      </main>
-    </div>
-  </div>
-
-  <script type="module" src="./script.js"></script>
-  <script>
-    function mostrar(secao) {
-      document.querySelectorAll(".content-section").forEach(s => s.classList.remove("active"));
-      document.getElementById(secao).classList.add("active");
-      document.querySelectorAll(".nav-button").forEach(b => b.classList.remove("active"));
-      document.querySelector(`[onclick="mostrar('${secao}')"]`).classList.add("active");
-    }
-  </script>
 </body>
 </html>
