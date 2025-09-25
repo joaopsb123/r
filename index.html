@@ -1,44 +1,216 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="pt">
 <head>
-  <meta charset="UTF-8">
-  <title>Minha Social</title>
-  <link rel="stylesheet" href="style.css">
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Rede Social - Demo (Firebase)</title>
+  <style>
+    :root{--accent:#ff3b6b;--muted:#666}
+    body{font-family:Inter,system-ui,Arial,sans-serif;margin:0;background:#fafafa;color:#111}
+    header{background:white;box-shadow:0 1px 0 rgba(0,0,0,0.05);padding:12px 16px;display:flex;align-items:center;gap:12px}
+    .logo{font-weight:700;color:var(--accent)}
+    .container{max-width:900px;margin:20px auto;padding:0 16px}
+    .card{background:white;border-radius:10px;padding:12px;margin-bottom:14px;box-shadow:0 6px 18px rgba(0,0,0,0.04)}
+    .row{display:flex;gap:12px;align-items:center}
+    input[type=text],textarea{width:100%;padding:8px;border-radius:8px;border:1px solid #e6e6e6}
+    button{background:var(--accent);color:white;border:0;padding:8px 12px;border-radius:8px;cursor:pointer}
+    .feed-item img{max-width:100%;border-radius:8px}
+    .meta{font-size:13px;color:var(--muted)}
+    .small{font-size:13px}
+    .center{display:flex;justify-content:center}
+    .profile-pill{background:#f6f6f6;padding:6px 10px;border-radius:999px}
+    .like-btn{background:transparent;border:0;cursor:pointer}
+    .hidden{display:none}
+    @media(min-width:800px){.row{align-items:flex-start}}
+  </style>
 </head>
 <body>
-  <!-- Navbar -->
-  <nav class="navbar">
-    <div class="logo">MinhaSocial</div>
-    <div class="nav-actions">
-      <button id="logoutBtn" class="btn btn-logout" style="display:none;">Sair</button>
-    </div>
-  </nav>
+  <header>
+    <div class="logo">MiniGram</div>
+    <div style="flex:1"></div>
+    <div id="userArea"></div>
+  </header>
 
-  <!-- Autenticação -->
-  <section id="authSection" class="auth-section">
-    <div class="auth-box">
-      <h2 id="authTitle">Entrar</h2>
-      <form id="authForm">
-        <input type="text" id="username" placeholder="Nome de utilizador" style="display:none;">
-        <input type="email" id="email" placeholder="Email" required>
-        <input type="password" id="password" placeholder="Palavra-passe" required>
-        <button type="submit" id="authBtn" class="btn">Entrar</button>
-      </form>
-      <p><a href="#" id="toggleAuthLink">Criar conta</a></p>
-      <button id="googleAuthBtn" class="btn btn-google">Entrar com Google</button>
-      <div id="authMessage" class="auth-message"></div>
+  <div class="container">
+    <div id="authCard" class="card">
+      <div style="display:flex;gap:12px;align-items:center">
+        <div style="flex:1">
+          <h3>Entrar (apenas nome)</h3>
+          <p class="meta">Este demo usa apenas um nome de utilizador guardado localmente + Firestore. Não é seguro para produção.</p>
+          <input id="usernameInput" type="text" placeholder="Escreve o teu nome..." />
+        </div>
+        <div>
+          <button id="loginBtn">Entrar</button>
+        </div>
+      </div>
     </div>
-  </section>
 
-  <!-- Feed -->
-  <section id="feedSection" class="feed-section" style="display:none;">
-    <div class="post-box">
-      <textarea id="postInput" placeholder="Escreve algo..."></textarea>
-      <button id="postBtn" class="btn">Publicar</button>
+    <div id="postCard" class="card hidden">
+      <h3>Criar publicação</h3>
+      <div style="display:flex;gap:12px;align-items:center">
+        <input id="caption" type="text" placeholder="Legenda..." />
+        <input id="imageInput" type="file" accept="image/*" />
+        <button id="postBtn">Publicar</button>
+      </div>
+      <p class="meta">As imagens são guardadas no Firebase Storage; os posts em Firestore (coleção <code>posts</code>).</p>
     </div>
-    <div id="feed"></div>
-  </section>
 
-  <script type="module" src="script.js"></script>
+    <div id="feed" class="card">
+      <h3>Feed</h3>
+      <div id="feedList"></div>
+    </div>
+  </div>
+
+  <!-- Firebase SDKs (modular) -->
+  <script type="module">
+    // ------------- CONFIGURAR AQUI ----------------
+    // Substitui com as tuas credenciais do Firebase
+    const firebaseConfig = {
+      apiKey: "AIzaSyAi4ov0jXHiH645K_zXDpO0yOtosZHQ0Ww",
+      authDomain: "socialapp-b67e0.firebaseapp.com",
+      projectId: "socialapp-b67e0",
+      storageBucket: "socialapp-b67e0.firebasestorage.app",
+      messagingSenderId: "798450413930",
+      appId: "1:798450413930:web:a8441ff7a2b7d1d6417513",
+      measurementId: "G-4TGTE5EMWQ"
+    };
+    // ----------------------------------------------
+
+    import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js';
+    import { getFirestore, collection, addDoc, serverTimestamp, onSnapshot, query, orderBy, doc, updateDoc, arrayUnion, arrayRemove, getDoc } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js';
+    import { getStorage, ref as sRef, uploadBytes, getDownloadURL } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-storage.js';
+
+    const app = initializeApp(firebaseConfig);
+    const db = getFirestore(app);
+    const storage = getStorage(app);
+
+    // UI
+    const usernameInput = document.getElementById('usernameInput');
+    const loginBtn = document.getElementById('loginBtn');
+    const userArea = document.getElementById('userArea');
+    const postCard = document.getElementById('postCard');
+    const captionInput = document.getElementById('caption');
+    const imageInput = document.getElementById('imageInput');
+    const postBtn = document.getElementById('postBtn');
+    const feedList = document.getElementById('feedList');
+    const authCard = document.getElementById('authCard');
+
+    // Simple "session" using localStorage (demo only)
+    function getSession() { return JSON.parse(localStorage.getItem('session') || 'null'); }
+    function setSession(obj){ localStorage.setItem('session', JSON.stringify(obj)); }
+    function clearSession(){ localStorage.removeItem('session'); }
+
+    function renderUserArea(){
+      const s = getSession();
+      if(!s){
+        userArea.innerHTML = '<button onclick="document.getElementById(\'usernameInput\').focus()">Entrar</button>';
+        postCard.classList.add('hidden');
+      } else {
+        userArea.innerHTML = `<div class=\"row\"><div class=\"profile-pill\">${escapeHtml(s.name)}</div>&nbsp;<button id=\"logoutBtn\">Sair</button></div>`;
+        document.getElementById('logoutBtn').addEventListener('click', ()=>{ clearSession(); renderUserArea(); authCard.classList.remove('hidden'); postCard.classList.add('hidden'); });
+        postCard.classList.remove('hidden');
+        authCard.classList.add('hidden');
+      }
+    }
+
+    function escapeHtml(str){ return String(str).replace(/[&<>"']/g, (m)=>({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"}[m])); }
+
+    loginBtn.addEventListener('click', async ()=>{
+      const name = usernameInput.value.trim();
+      if(!name) return alert('Escreve um nome.');
+      // cria/atualiza documento de utilizador
+      const usersCol = collection(db, 'users');
+      // Guarda apenas um documento com o nome; para demo usamos o timestamp como id.
+      const user = { name, createdAt: serverTimestamp() };
+      try{
+        const d = await addDoc(usersCol, user);
+        setSession({ id: d.id, name });
+        renderUserArea();
+      }catch(e){console.error(e);alert('Erro a criar sessão.');}
+    });
+
+    postBtn.addEventListener('click', async ()=>{
+      const s = getSession();
+      if(!s) return alert('Tem de entrar antes.');
+      const caption = captionInput.value.trim();
+      const file = imageInput.files[0];
+      if(!file) return alert('Escolhe uma imagem.');
+
+      postBtn.disabled = true; postBtn.textContent = 'A enviar...';
+      try{
+        // faz upload da imagem
+        const storageRef = sRef(storage, `posts/${Date.now()}_${file.name}`);
+        const snap = await uploadBytes(storageRef, file);
+        const url = await getDownloadURL(storageRef);
+        // cria doc post
+        const postsCol = collection(db, 'posts');
+        await addDoc(postsCol, {
+          authorId: s.id,
+          authorName: s.name,
+          caption,
+          imageUrl: url,
+          likes: [],
+          createdAt: serverTimestamp()
+        });
+        captionInput.value = '';
+        imageInput.value = '';
+      }catch(e){console.error(e);alert('Erro ao criar post');}
+      postBtn.disabled = false; postBtn.textContent = 'Publicar';
+    });
+
+    // Feed em tempo-real
+    const postsCol = collection(db, 'posts');
+    const q = query(postsCol, orderBy('createdAt','desc'));
+    onSnapshot(q, (snap)=>{
+      feedList.innerHTML = '';
+      snap.forEach(docSnap=>{
+        const data = docSnap.data();
+        const id = docSnap.id;
+        const el = document.createElement('div'); el.className = 'feed-item';
+        el.innerHTML = `
+          <div class="card">
+            <div class="row" style="justify-content:space-between">
+              <div>
+                <strong>${escapeHtml(data.authorName || 'Anónimo')}</strong>
+                <div class="meta small">${data.createdAt && data.createdAt.toDate ? new Date(data.createdAt.toDate()).toLocaleString() : ''}</div>
+              </div>
+              <div>
+                <button class="like-btn" data-id="${id}">❤️ <span class="like-count">${(data.likes||[]).length}</span></button>
+              </div>
+            </div>
+            <div style="margin-top:10px">${escapeHtml(data.caption || '')}</div>
+            ${data.imageUrl ? `<div style="margin-top:10px"><img src="${data.imageUrl}" alt="post" /></div>` : ''}
+          </div>
+        `;
+        feedList.appendChild(el);
+      });
+      attachLikeHandlers();
+    });
+
+    function attachLikeHandlers(){
+      const s = getSession();
+      document.querySelectorAll('.like-btn').forEach(btn=>{
+        btn.onclick = async ()=>{
+          const id = btn.getAttribute('data-id');
+          if(!s) return alert('Entra para gostar');
+          const postRef = doc(db, 'posts', id);
+          // lê o doc atual
+          const snap = await getDoc(postRef);
+          const data = snap.data();
+          const likes = data.likes || [];
+          if(likes.includes(s.id)){
+            // remover like
+            await updateDoc(postRef, { likes: arrayRemove(s.id) });
+          } else {
+            await updateDoc(postRef, { likes: arrayUnion(s.id) });
+          }
+        };
+      });
+    }
+
+    // Inicializa UI
+    renderUserArea();
+
+  </script>
 </body>
 </html>
