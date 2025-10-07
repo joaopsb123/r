@@ -16,6 +16,11 @@
 
     <div class="main-container">
 
+        <header class="feed-header">
+            <button class="feed-filter-btn active" data-filter="for-you" id="filter-foryou">Para Você</button>
+            <button class="feed-filter-btn" data-filter="following" id="filter-following">Seguindo</button>
+        </header>
+
         <div class="feed-container" id="feed-view">
             </div>
 
@@ -24,19 +29,21 @@
                 <img id="profile-pic" src="https://i.pravatar.cc/150?img=1" alt="Foto de Perfil" class="profile-pic-main">
                 <h2 id="profile-username">@NomeDoUsuario</h2>
                 <p id="profile-stats">0 Seguidores • 0 Seguindo • 0 Likes</p>
+                <button id="follow-toggle-btn" class="hidden">Seguir</button>
             </div>
             <div class="profile-tabs">
                 <button class="tab-btn active" data-tab="videos">Vídeos</button>
                 <button class="tab-btn" data-tab="liked">Gostos</button>
             </div>
-            <div class="video-grid" id="user-videos-grid">
-                </div>
+            <div class="video-grid" id="user-videos-grid"></div>
         </div>
 
+        <div class="profile-view hidden" id="inbox-view">
+            </div>
     </div>
     <div id="login-modal" class="login-modal hidden">
         <div class="login-box">
-            <h2>Bem-vindo ao VideoT</h2>
+            <h2 style="margin-bottom: 15px;">Bem-vindo ao VideoT</h2>
             <input type="email" id="email" placeholder="Email">
             <input type="password" id="password" placeholder="Senha">
             <button id="login-btn">Login</button>
@@ -61,7 +68,7 @@
         <a href="#" class="nav-item active" id="nav-feed"><i class="fas fa-home"></i><span>Início</span></a>
         <a href="#" class="nav-item"><i class="fas fa-search"></i><span>Descobrir</span></a>
         <button class="upload-btn" id="open-upload-modal"><i class="fas fa-plus"></i></button>
-        <a href="#" class="nav-item"><i class="fas fa-inbox"></i><span>Caixa de Entrada</span></a>
+        <a href="#" class="nav-item" id="nav-inbox"><i class="fas fa-inbox"></i><span>Caixa de Entrada</span></a>
         <a href="#" class="nav-item" id="nav-profile"><i class="fas fa-user"></i><span>Perfil</span></a>
     </nav>
 
