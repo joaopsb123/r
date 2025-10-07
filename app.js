@@ -12,7 +12,7 @@ const firebaseConfig = {
     appId: "1:583396995831:web:6182575e28ea628cc259f2"
 };
 // 🚨 2. SUAS CREDENCIAIS CLOUDINARY
-const CLOUDINARY_CLOUD_NAME = 'dya1jd0mx'; // Substitua pelo seu Cloud Name
+const CLOUDINARY_CLOUD_NAME = 'VideoT'; // Substitua pelo seu Cloud Name
 const CLOUDINARY_UPLOAD_PRESET = 'videot_unsigned_preset'; // Use o Preset Não Assinado que você criou
 const CLOUDINARY_URL = `https://api.cloudinary.com/v1_1/${CLOUDINARY_CLOUD_NAME}/video/upload`;
 
