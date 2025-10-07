@@ -1,118 +1,111 @@
-// AVISO: Este código é um exemplo educacional. Em produção, use um framework (React)
-// e proteja suas variáveis de ambiente e o Upload Preset do Cloudinary.
+// AVISO: Este código é um exemplo educacional em JavaScript Vanilla/Firebase v9 (compat).
 
 // ----------------------------------------------------------------------
-// 0. CONFIGURAÇÃO DE SERVIÇOS
+// 0. CONFIGURAÇÃO DE SERVIÇOS (REPETIR SUAS CREDENCIAIS AQUI)
 // ----------------------------------------------------------------------
-
-// Suas credenciais Firebase (já configuradas no index.html)
-const app = firebase.app();
-const auth = app.auth();
-const db = app.firestore();
-const analytics = firebase.analytics ? firebase.analytics() : null; // Analítica opcional
-
-// SUAS CONFIGURAÇÕES CLOUDINARY (Cloud-name e Upload Preset)
-const CLOUDINARY_CLOUD_NAME = 'Social';
-// **Crie esta preset como "Unsigned" no seu painel do Cloudinary!**
+const firebaseConfig = { /* ... COLOQUE SUAS CHAVES DO FIREBASE AQUI ... */ };
+const CLOUDINARY_CLOUD_NAME = 'dya1jd0mx';
 const CLOUDINARY_UPLOAD_PRESET = 'videot_unsigned_preset'; 
 const CLOUDINARY_URL = `https://api.cloudinary.com/v1_1/${CLOUDINARY_CLOUD_NAME}/video/upload`;
+
+const app = firebase.initializeApp(firebaseConfig);
+const auth = app.auth();
+const db = app.firestore();
 
 // Elementos DOM
 const feedContainer = document.querySelector('.feed-container');
 const loginModal = document.getElementById('login-modal');
 const uploadModal = document.getElementById('upload-modal');
-const openUploadModalBtn = document.getElementById('open-upload-modal');
 const uploadStatus = document.getElementById('upload-status');
+const openUploadModalBtn = document.getElementById('open-upload-modal');
 let CURRENT_USER_DATA = null;
 
 
 // ----------------------------------------------------------------------
-// 1. LÓGICA DE UPLOAD (CLOUD BINARY + FIRESTORE)
+// 1. SISTEMA DE LIKES EM TEMPO REAL (O SEU FOGUINHO)
 // ----------------------------------------------------------------------
 
-const uploadVideoToCloudinary = async (file) => {
-    uploadStatus.textContent = "Iniciando upload para Cloudinary...";
-    const formData = new FormData();
-    formData.append('file', file);
-    formData.append('upload_preset', CLOUDINARY_UPLOAD_PRESET);
+const handleLike = async (videoId, likeBtnElement) => {
+    if (!CURRENT_USER_DATA) {
+        alert("Faça login para dar 'gosto'!");
+        return;
+    }
+
+    const userId = CURRENT_USER_DATA.uid;
+    const videoRef = db.collection('videos').doc(videoId);
+    const likeRef = videoRef.collection('likes').doc(userId);
 
     try {
-        const response = await fetch(CLOUDINARY_URL, {
-            method: 'POST',
-            body: formData,
-        });
-        const data = await response.json();
-        if (data.error) throw new Error(data.error.message);
-        return data.secure_url;
+        const likeDoc = await likeRef.get();
+        const icon = likeBtnElement.querySelector('i');
+
+        // Lógica: Se o documento de like existe, o usuário está retirando o gosto.
+        if (likeDoc.exists) {
+            // 1. Retirar Like
+            await likeRef.delete();
+            // Atualizar contagem no documento principal (decremento)
+            await videoRef.update({ 
+                likesCount: firebase.firestore.FieldValue.increment(-1) 
+            });
+            icon.style.color = 'white';
+        } else {
+            // 2. Dar Like
+            await likeRef.set({ userId: userId, timestamp: firebase.firestore.FieldValue.serverTimestamp() });
+            // Atualizar contagem no documento principal (incremento)
+            await videoRef.update({ 
+                likesCount: firebase.firestore.FieldValue.increment(1) 
+            });
+            icon.style.color = '#ff0050'; // Cor vermelha do 'gosto'
+        }
+
     } catch (error) {
-        uploadStatus.textContent = `Erro no Cloudinary: ${error.message}`;
-        throw error;
+        console.error("Erro ao processar Like:", error);
     }
 };
 
-const handleVideoUpload = async () => {
-    const fileInput = document.getElementById('video-file-input');
-    const descriptionInput = document.getElementById('video-description-input');
-    const file = fileInput.files[0];
-    const description = descriptionInput.value;
+// ----------------------------------------------------------------------
+// 2. SISTEMA DE COMENTÁRIOS BÁSICO
+// ----------------------------------------------------------------------
 
-    if (!file || !description || !CURRENT_USER_DATA) {
-        alert("Selecione um arquivo e adicione uma descrição.");
+// NOTA: Em um aplicativo real, isso abriria um modal de comentários.
+const handleComment = (videoId) => {
+    if (!CURRENT_USER_DATA) {
+        alert("Faça login para comentar.");
         return;
     }
     
-    document.getElementById('upload-video-btn').disabled = true;
-
-    try {
-        // 1. Upload para Cloudinary
-        const videoUrl = await uploadVideoToCloudinary(file);
-        
-        // 2. Gravar metadados no Firestore
-        uploadStatus.textContent = "Upload concluído! Salvando dados no Firestore...";
-        
-        await db.collection('videos').add({
+    const commentText = prompt("Adicione seu comentário:");
+    if (commentText) {
+        // 1. Adicionar comentário à subcoleção 'comments'
+        db.collection('videos').doc(videoId).collection('comments').add({
             userId: CURRENT_USER_DATA.uid,
-            username: CURRENT_USER_DATA.username, // Usa o nome salvo no Firestore
-            videoUrl: videoUrl,
-            description: description,
-            likesCount: 0,
-            commentsCount: 0,
+            username: CURRENT_USER_DATA.username,
+            text: commentText,
             timestamp: firebase.firestore.FieldValue.serverTimestamp()
+        }).then(() => {
+            // 2. Opcional: Atualizar contagem no documento principal (incremento)
+             db.collection('videos').doc(videoId).update({ 
+                commentsCount: firebase.firestore.FieldValue.increment(1) 
+            });
+        }).catch(error => {
+            console.error("Erro ao adicionar comentário:", error);
         });
-
-        uploadStatus.textContent = "Vídeo enviado com sucesso para o VideoT!";
-        setTimeout(() => {
-            uploadModal.classList.add('hidden');
-            document.getElementById('upload-video-btn').disabled = false;
-        }, 2000);
-        
-    } catch (error) {
-        console.error("Erro fatal no upload:", error);
-        uploadStatus.textContent = `Falha no upload. Tente novamente.`;
-        document.getElementById('upload-video-btn').disabled = false;
     }
 };
 
-// Listener para o botão de upload
-document.getElementById('upload-video-btn').addEventListener('click', handleVideoUpload);
-openUploadModalBtn.addEventListener('click', () => {
-    if (CURRENT_USER_DATA) {
-        uploadModal.classList.remove('hidden');
-        uploadStatus.textContent = "";
-    } else {
-        alert("Faça login para adicionar vídeos.");
-    }
-});
-
-
 // ----------------------------------------------------------------------
-// 2. RENDERIZAÇÃO E FEED EM TEMPO REAL (FIRESTORE)
+// 3. RENDERIZAÇÃO E FEED EM TEMPO REAL (AGORA COM LIKES E COMENTÁRIOS)
 // ----------------------------------------------------------------------
 
 // Função que cria o HTML para um único vídeo
 const createVideoCard = (video) => {
     const card = document.createElement('div');
     card.className = 'video-card';
+
+    // O Public ID seria '5e4898bea9a5d984c3ba51352583e8' se fosse um exemplo estático.
+    // Usamos o video.videoUrl que já contém o ID gerado pelo Cloudinary.
+    const isLiked = video.isLiked ? 'style="color: #ff0050;"' : 'style="color: white;"';
+
     card.innerHTML = `
         <video class="video-player" loop muted src="${video.videoUrl}"></video>
         <div class="video-overlay" data-video-id="${video.id}">
@@ -126,10 +119,13 @@ const createVideoCard = (video) => {
             </div>
             <div class="video-actions-right">
                 <div class="action-button like-btn" data-video-id="${video.id}">
-                    <i class="fas fa-heart"></i>
+                    <i class="fas fa-heart" ${isLiked}></i>
                     <span>${video.likesCount}</span>
                 </div>
-                <div class="action-button"><i class="fas fa-comment-dots"></i><span>${video.commentsCount}</span></div>
+                <div class="action-button comment-btn" data-video-id="${video.id}">
+                    <i class="fas fa-comment-dots"></i>
+                    <span>${video.commentsCount}</span>
+                </div>
                 <div class="action-button"><i class="fas fa-share"></i><span>0</span></div>
                 <div class="action-button profile-music-disk">
                     <img src="https://i.pravatar.cc/150?img=${video.userId.slice(-1)}" alt="Perfil" class="profile-pic-disk">
@@ -140,133 +136,91 @@ const createVideoCard = (video) => {
     return card;
 };
 
-
-// Listener em Tempo Real (A Mágica do Realtime)
+// Listener em Tempo Real Aprimorado
 const setupRealtimeFeed = () => {
-    // Ordena os vídeos pelo mais recente (timestamp)
     db.collection('videos').orderBy('timestamp', 'desc')
-        .onSnapshot((snapshot) => {
-            // Limpa o feed anterior
+        .onSnapshot(async (snapshot) => {
             feedContainer.innerHTML = '';
             
-            // Re-renderiza o feed completo com os novos dados
-            snapshot.forEach((doc) => {
+            const videoPromises = snapshot.docs.map(async (doc) => {
                 const videoData = { id: doc.id, ...doc.data() };
-                const card = createVideoCard(videoData);
-                feedContainer.appendChild(card);
+                
+                // Verifica se o usuário logado já deu like
+                if (CURRENT_USER_DATA) {
+                    const likeDoc = await db.collection('videos').doc(videoData.id)
+                        .collection('likes').doc(CURRENT_USER_DATA.uid).get();
+                    videoData.isLiked = likeDoc.exists;
+                }
+                
+                return createVideoCard(videoData);
             });
+
+            const videoCards = await Promise.all(videoPromises);
+            videoCards.forEach(card => feedContainer.appendChild(card));
             
-            // Re-adiciona os listeners de rolagem e clique após a atualização do DOM
-            setupVideoControl();
+            setupVideoControl(); // Re-adiciona o controle de play/pause
+            setupInteractionListeners(); // **Novo**: Adiciona listeners de Like/Comentário
         });
 };
 
 
 // ----------------------------------------------------------------------
-// 3. CONTROLE DE VÍDEO E AUTENTICAÇÃO (Play/Pause e Login)
+// 4. CONFIGURAÇÃO DE LISTENERS (LIKES E COMENTÁRIOS)
 // ----------------------------------------------------------------------
 
-let currentVideoPlayer = null;
-
-const setupVideoControl = () => {
-    const videoCards = document.querySelectorAll('.video-card');
-
-    // Lógica de Autoplay/Pause na rolagem
-    const handleScroll = () => {
-        const viewportHeight = window.innerHeight;
-        let closestCard = null;
-        let minDistance = Infinity;
-
-        videoCards.forEach(card => {
-            const rect = card.getBoundingClientRect();
-            const cardCenter = rect.top + rect.height / 2; 
-            const viewportCenter = viewportHeight / 2;
-            const distance = Math.abs(cardCenter - viewportCenter);
-
-            if (distance < minDistance) {
-                minDistance = distance;
-                closestCard = card;
-            }
-        });
-
-        if (closestCard) {
-            const newVideoPlayer = closestCard.querySelector('.video-player');
-            if (newVideoPlayer && currentVideoPlayer !== newVideoPlayer) {
-                if (currentVideoPlayer) {
-                    currentVideoPlayer.pause();
-                    const oldIcon = currentVideoPlayer.parentElement.querySelector('.play-pause-icon');
-                    if (oldIcon) oldIcon.style.opacity = '1';
-                }
-
-                newVideoPlayer.play().catch(console.error);
-                currentVideoPlayer = newVideoPlayer;
-                const newIcon = currentVideoPlayer.parentElement.querySelector('.play-pause-icon');
-                if (newIcon) newIcon.style.opacity = '0';
-            }
-        }
-    };
-
-    // Lógica de Play/Pause no clique
-    videoCards.forEach(card => {
-        const video = card.querySelector('.video-player');
-        const playPauseIcon = card.querySelector('.play-pause-icon');
-
-        card.addEventListener('click', () => {
-            if (video.paused) {
-                video.play();
-                playPauseIcon.style.opacity = '0';
-            } else {
-                video.pause();
-                playPauseIcon.style.opacity = '1';
-            }
-        });
+const setupInteractionListeners = () => {
+    // 1. Botões de Like
+    document.querySelectorAll('.like-btn').forEach(btn => {
+        btn.removeEventListener('click', handleLikeWrapper); // Remove listeners anteriores
+        btn.addEventListener('click', handleLikeWrapper);
     });
 
-    // Inicia a verificação de rolagem
-    handleScroll();
+    // Wrapper para passar o elemento do botão para a função handleLike
+    function handleLikeWrapper(event) {
+        const videoId = event.currentTarget.dataset.videoId;
+        handleLike(videoId, event.currentTarget);
+    }
+    
+    // 2. Botões de Comentário
+    document.querySelectorAll('.comment-btn').forEach(btn => {
+        btn.removeEventListener('click', handleCommentWrapper); // Remove listeners anteriores
+        btn.addEventListener('click', handleCommentWrapper);
+    });
+
+    function handleCommentWrapper(event) {
+        const videoId = event.currentTarget.dataset.videoId;
+        handleComment(videoId);
+    }
 };
 
 
 // ----------------------------------------------------------------------
-// 4. INICIALIZAÇÃO E AUTENTICAÇÃO
+// 5. OUTRAS FUNÇÕES (UPLOAD, LOGIN, PLAY/PAUSE) - Mantidas do código anterior
 // ----------------------------------------------------------------------
 
-// Função para buscar dados do usuário (necessário para o upload)
-const fetchUserData = async (uid) => {
+// (O resto do seu código de handleVideoUpload, login/registro, e setupVideoControl vai aqui...)
+
+// Exemplo da função handleVideoUpload com o uso do Public ID implícito na URL:
+/*
+const handleVideoUpload = async () => {
+    // ... (restante da lógica de validação) ...
     try {
-        const doc = await db.collection('users').doc(uid).get();
-        return doc.exists ? { uid: uid, ...doc.data() } : null;
-    } catch (e) {
-        console.error("Erro ao buscar dados do usuário:", e);
-        return null;
+        // 1. Upload para Cloudinary (retorna URL completa, que contém o Public ID)
+        const videoUrl = await uploadVideoToCloudinary(file);
+        
+        // 2. Gravar metadados no Firestore
+        await db.collection('videos').add({
+            // ... (campos) ...
+            videoUrl: videoUrl, // Usamos a URL completa, que é suficiente para exibir
+            // ...
+        });
+        // ...
+    } catch (error) {
+        // ...
     }
 };
+*/
 
-// Listener do Estado de Autenticação
-auth.onAuthStateChanged(async (user) => {
-    if (user) {
-        // Usuário logado
-        CURRENT_USER_DATA = await fetchUserData(user.uid);
-        if (CURRENT_USER_DATA) {
-            loginModal.classList.add('hidden');
-            setupRealtimeFeed(); // Começa a carregar o feed em tempo real!
-        } else {
-            // Se o documento do usuário não existir (erro no registro), força o logout
-            auth.signOut();
-        }
-    } else {
-        // Usuário deslogado
-        CURRENT_USER_DATA = null;
-        loginModal.classList.remove('hidden');
-        feedContainer.innerHTML = `<h2 style="color: white; text-align: center; padding-top: 50px;">Faça login para ver o feed.</h2>`;
-    }
-});
-
-// Eventos de login/cadastro (usados do exercício anterior)
-const authStatus = document.getElementById('auth-status');
-document.getElementById('login-btn').addEventListener('click', async () => { /* ... (mesma lógica de login) ... */ });
-document.getElementById('register-btn').addEventListener('click', async () => { /* ... (mesma lógica de cadastro, mas aprimorada para salvar no Firestore) ... */ });
-
-// Adiciona o listener de rolagem após o DOM carregar
-document.querySelector('.feed-container').addEventListener('scroll', setupVideoControl);
-            
+// Inicialização:
+// auth.onAuthStateChanged(...) e document.addEventListener('DOMContentLoaded', ...)
+    
