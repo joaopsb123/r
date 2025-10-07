@@ -13,25 +13,62 @@ html, body {
     font-family: Arial, sans-serif; 
     background-color: #000;
     color: white; 
-    overflow: hidden; /* CRUCIAL: Evita a barra de rolagem padrão do navegador */
+    overflow: hidden; 
 }
 
 .hidden { display: none !important; }
 
-/* O Main Container envolve o feed e o perfil, ajustando-se à barra de navegação */
+/* O Main Container ajusta o espaço para a barra de navegação inferior */
 .main-container {
     height: calc(100vh - 60px); 
     overflow: hidden;
+    position: relative;
 }
 
 /* ====================================================================== */
-/* 2. FEED DE VÍDEOS COM SCROLL-SNAP */
+/* 2. CABEÇALHO E FILTROS DO FEED */
+/* ====================================================================== */
+
+.feed-header {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 40px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    background: rgba(0, 0, 0, 0.4);
+    z-index: 5; 
+}
+
+.feed-filter-btn {
+    background: none;
+    border: none;
+    color: rgba(255, 255, 255, 0.6);
+    font-size: 16px;
+    padding: 0 15px;
+    cursor: pointer;
+    font-weight: bold;
+    transition: color 0.3s;
+}
+
+.feed-filter-btn.active {
+    color: white;
+    border-bottom: 2px solid white; 
+    padding-bottom: 5px;
+}
+
+/* ====================================================================== */
+/* 3. FEED DE VÍDEOS COM SCROLL-SNAP */
 /* ====================================================================== */
 
 .feed-container {
-    height: 100%;
+    /* Altura total - Header (40px) */
+    height: calc(100% - 40px); 
     overflow-y: scroll;
     scroll-snap-type: y mandatory; 
+    margin-top: 40px; 
 }
 
 .video-card {
@@ -47,10 +84,7 @@ html, body {
     object-fit: cover; 
 }
 
-/* ---------------------------------- */
-/* Overlay e Interações */
-/* ---------------------------------- */
-
+/* Overlay e Conteúdo */
 .video-overlay {
     position: absolute;
     top: 0;
@@ -64,7 +98,6 @@ html, body {
     text-shadow: 0 0 5px rgba(0, 0, 0, 0.7); 
 }
 
-/* Ícone de Play/Pause Central */
 .play-pause-icon {
     position: absolute;
     top: 50%;
@@ -76,18 +109,16 @@ html, body {
     pointer-events: none; 
 }
 
-/* Conteúdo Esquerdo */
 .video-content-left {
     padding: 0 15px 10px 15px; 
     display: flex;
     align-items: flex-end;
     background: linear-gradient(to top, rgba(0, 0, 0, 0.5), transparent);
 }
-.user-info h2 { font-size: 18px; margin-bottom: 5px; }
+.user-info h2 { font-size: 18px; margin-bottom: 5px; cursor: pointer; }
 .user-info .description { font-size: 15px; margin-bottom: 5px; }
 .music-info { font-size: 14px; opacity: 0.9; }
 
-/* Ações Direitas (Like, Share) */
 .video-actions-right {
     position: absolute;
     right: 15px;
@@ -109,7 +140,6 @@ html, body {
 .action-button i { font-size: 28px; margin-bottom: 5px; }
 .action-button span { font-size: 12px; }
 
-/* Disco de Música Giratório */
 .profile-music-disk { margin-top: 25px; }
 .profile-pic-disk {
     width: 50px;
@@ -126,7 +156,7 @@ html, body {
 
 
 /* ====================================================================== */
-/* 3. BARRA DE NAVEGAÇÃO INFERIOR */
+/* 4. BARRA DE NAVEGAÇÃO INFERIOR */
 /* ====================================================================== */
 
 .bottom-nav {
@@ -172,7 +202,7 @@ html, body {
 }
 
 /* ====================================================================== */
-/* 4. MODAIS (LOGIN E UPLOAD) */
+/* 5. MODAIS (LOGIN E UPLOAD) */
 /* ====================================================================== */
 
 .login-modal, .upload-modal {
@@ -240,11 +270,11 @@ html, body {
 
 
 /* ====================================================================== */
-/* 5. ESTILOS DA PÁGINA DE PERFIL */
+/* 6. ESTILOS DA PÁGINA DE PERFIL E CAIXA DE ENTRADA */
 /* ====================================================================== */
 
 .profile-view {
-    height: 100%; /* Ajuste para preencher o main-container */
+    height: calc(100vh - 60px); 
     overflow-y: scroll;
     padding-bottom: 20px; 
 }
@@ -264,8 +294,30 @@ html, body {
     border: 3px solid #ff0050; 
 }
 
-#profile-username { font-size: 24px; margin-bottom: 5px; }
-#profile-stats { font-size: 14px; opacity: 0.7; }
+/* Botão Seguir/Deixar de Seguir */
+#follow-toggle-btn {
+    margin-top: 15px;
+    padding: 8px 30px;
+    font-size: 16px;
+    font-weight: bold;
+    border-radius: 5px;
+    cursor: pointer;
+    transition: background-color 0.2s;
+}
+
+/* Estilo: Seguir */
+#follow-toggle-btn.follow {
+    background-color: #ff0050;
+    color: white;
+    border: none;
+}
+
+/* Estilo: Deixar de Seguir */
+#follow-toggle-btn.following {
+    background-color: #333;
+    color: white;
+    border: 1px solid #555;
+}
 
 .profile-tabs {
     display: flex;
@@ -300,4 +352,5 @@ html, body {
     aspect-ratio: 9/16; 
     object-fit: cover;
     background-color: #222;
-                              }
+    }
+    
