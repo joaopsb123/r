@@ -10,12 +10,30 @@
     <script src="https://www.gstatic.com/firebasejs/9.6.10/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.6.10/firebase-auth-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.6.10/firebase-firestore-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.6.10/firebase-analytics-compat.js"></script>
 </head>
 <body>
 
-    <div class="feed-container">
+    <div class="main-container">
+
+        <div class="feed-container" id="feed-view">
+            </div>
+
+        <div class="profile-view hidden" id="profile-view">
+            <div class="profile-header">
+                <img id="profile-pic" src="https://i.pravatar.cc/150?img=1" alt="Foto de Perfil" class="profile-pic-main">
+                <h2 id="profile-username">@NomeDoUsuario</h2>
+                <p id="profile-stats">0 Seguidores • 0 Seguindo • 0 Likes</p>
+            </div>
+            <div class="profile-tabs">
+                <button class="tab-btn active" data-tab="videos">Vídeos</button>
+                <button class="tab-btn" data-tab="liked">Gostos</button>
+            </div>
+            <div class="video-grid" id="user-videos-grid">
+                </div>
         </div>
 
+    </div>
     <div id="login-modal" class="login-modal hidden">
         <div class="login-box">
             <h2>Bem-vindo ao VideoT</h2>
@@ -27,24 +45,25 @@
         </div>
     </div>
     
-    <div id="upload-modal" class="upload-modal hidden">
+    <div class="upload-modal hidden" id="upload-modal">
         <div class="upload-box">
-            <span class="close-modal" onclick="document.getElementById('upload-modal').classList.add('hidden')">&times;</span>
-            <h2>Adicionar Novo Vídeo</h2>
-            <input type="file" id="video-file-input" accept="video/*">
+            <span class="close-modal" id="close-upload-modal">&times;</span>
+            <h2>Postar Vídeo</h2>
+            <input type="file" id="video-file-input" accept="video/mp4,video/quicktime">
             <input type="text" id="video-description-input" placeholder="Descrição do vídeo e hashtags">
-            <button id="upload-video-btn">Enviar Vídeo</button>
+            <button id="upload-video-btn">POSTAR</button>
             <p id="upload-status"></p>
         </div>
     </div>
 
-    <footer class="bottom-nav">
-        <a href="#" class="nav-item active"><i class="fas fa-home"></i> Início</a>
-        <a href="#" class="nav-item"><i class="fas fa-compass"></i> Descobrir</a>
-        <a href="#" class="nav-item upload-btn" id="open-upload-modal"><i class="fas fa-plus"></i></a>
-        <a href="#" class="nav-item"><i class="fas fa-inbox"></i> Inbox</a>
-        <a href="#" class="nav-item"><i class="fas fa-user"></i> Perfil</a>
-    </footer>
+
+    <nav class="bottom-nav">
+        <a href="#" class="nav-item active" id="nav-feed"><i class="fas fa-home"></i><span>Início</span></a>
+        <a href="#" class="nav-item"><i class="fas fa-search"></i><span>Descobrir</span></a>
+        <button class="upload-btn" id="open-upload-modal"><i class="fas fa-plus"></i></button>
+        <a href="#" class="nav-item"><i class="fas fa-inbox"></i><span>Caixa de Entrada</span></a>
+        <a href="#" class="nav-item" id="nav-profile"><i class="fas fa-user"></i><span>Perfil</span></a>
+    </nav>
 
     <script src="app.js" type="module" defer></script>
 </body>
