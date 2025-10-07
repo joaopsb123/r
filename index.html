@@ -3,9 +3,14 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>VideoT - Estilo TikTok</title>
+    <title>VideoT - Onde os Vídeos Explodem</title>
     <link rel="stylesheet" href="style.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    
+    <script src="https://www.gstatic.com/firebasejs/9.6.10/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.6.10/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.6.10/firebase-firestore-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.6.10/firebase-analytics-compat.js"></script>
 </head>
 <body>
 
@@ -13,88 +18,73 @@
 
         <div class="video-card">
             
-            <video class="video-player" loop autoplay muted src="https://assets.mixkit.co/videos/preview/mixkit-women-cheering-in-a-field-at-a-festival-16027-large.mp4"></video>
-
+            <video id="video-1" class="video-player" loop muted src="https://assets.mixkit.co/videos/preview/mixkit-women-cheering-in-a-field-at-a-festival-16027-large.mp4"></video>
             <div class="video-overlay">
+                <i id="play-pause-1" class="fas fa-play play-pause-icon"></i>
 
                 <div class="video-content-left">
                     <div class="user-info">
                         <h2>@videot_official</h2>
-                        <p class="description">Bem-vindo ao VideoT! Nosso primeiro vídeo no ar. ✨ #videot #lancamento #viral</p>
-                        <div class="music-info">
-                            <i class="fas fa-music"></i> <span>Música Original de VideoT</span>
-                        </div>
+                        <p class="description">Bem-vindo ao VideoT! Onde a magia dos vídeos acontece. #videot</p>
+                        <div class="music-info"><i class="fas fa-music"></i> <span>Música Original</span></div>
                     </div>
                 </div>
 
                 <div class="video-actions-right">
-                    
-                    <div class="action-button">
-                        <i class="fas fa-heart"></i>
-                        <span>9.5K</span>
-                    </div>
-
-                    <div class="action-button">
-                        <i class="fas fa-comment-dots"></i>
-                        <span>352</span>
-                    </div>
-                    
-                    <div class="action-button">
-                        <i class="fas fa-share"></i>
-                        <span>1.2K</span>
-                    </div>
-
+                    <div class="action-button"><i class="fas fa-heart"></i><span>9.5K</span></div>
+                    <div class="action-button"><i class="fas fa-comment-dots"></i><span>352</span></div>
+                    <div class="action-button"><i class="fas fa-share"></i><span>1.2K</span></div>
                     <div class="action-button profile-music-disk">
                         <img src="https://i.pravatar.cc/150?img=1" alt="Perfil" class="profile-pic-disk">
                     </div>
                 </div>
             </div>
-            
-            <footer class="bottom-nav">
-                <a href="#" class="nav-item active"><i class="fas fa-home"></i></a>
-                <a href="#" class="nav-item"><i class="fas fa-compass"></i></a>
-                <a href="#" class="nav-item upload-btn">+</a>
-                <a href="#" class="nav-item"><i class="fas fa-inbox"></i></a>
-                <a href="#" class="nav-item"><i class="fas fa-user"></i></a>
-            </footer>
-
         </div>
 
         <div class="video-card">
-            <video class="video-player" loop autoplay muted src="https://assets.mixkit.co/videos/preview/mixkit-young-man-playing-a-virtual-reality-game-in-the-street-16345-large.mp4"></video>
+            <video id="video-2" class="video-player" loop muted src="https://assets.mixkit.co/videos/preview/mixkit-young-man-playing-a-virtual-reality-game-in-the-street-16345-large.mp4"></video>
             <div class="video-overlay">
+                 <i id="play-pause-2" class="fas fa-play play-pause-icon"></i>
                 <div class="video-content-left">
                     <div class="user-info">
                         <h2>@techtuber_br</h2>
-                        <p class="description">Review de VR na rua, a experiência é insana! 🤯 #tech #vr #videogames</p>
-                        <div class="music-info">
-                            <i class="fas fa-music"></i> <span>Música Eletrônica Genérica</span>
-                        </div>
+                        <p class="description">VR na rua, experiência insana! #tech #vr</p>
+                        <div class="music-info"><i class="fas fa-music"></i> <span>Música Eletrônica</span></div>
                     </div>
                 </div>
                 <div class="video-actions-right">
-                    <div class="action-button">
-                        <i class="fas fa-heart"></i>
-                        <span>12.3K</span>
-                    </div>
-                    <div class="action-button">
-                        <i class="fas fa-comment-dots"></i>
-                        <span>800</span>
-                    </div>
-                    <div class="action-button">
-                        <i class="fas fa-share"></i>
-                        <span>340</span>
-                    </div>
+                     <div class="action-button"><i class="fas fa-heart"></i><span>12.3K</span></div>
+                     <div class="action-button"><i class="fas fa-comment-dots"></i><span>800</span></div>
+                     <div class="action-button"><i class="fas fa-share"></i><span>340</span></div>
                     <div class="action-button profile-music-disk">
                         <img src="https://i.pravatar.cc/150?img=2" alt="Perfil" class="profile-pic-disk">
                     </div>
                 </div>
             </div>
-            <footer class="bottom-nav">
-                </footer>
+        </div>
+        
+        <div id="login-modal" class="login-modal hidden">
+            <div class="login-box">
+                <h2>Bem-vindo ao VideoT</h2>
+                <input type="email" id="email" placeholder="Email">
+                <input type="password" id="password" placeholder="Senha">
+                <button id="login-btn">Login</button>
+                <button id="register-btn">Cadastrar</button>
+                <p id="auth-status"></p>
+            </div>
         </div>
 
     </div>
 
+    <footer class="bottom-nav">
+        <a href="#" class="nav-item active"><i class="fas fa-home"></i> Início</a>
+        <a href="#" class="nav-item"><i class="fas fa-compass"></i> Descobrir</a>
+        <a href="#" class="nav-item upload-btn"><i class="fas fa-plus"></i></a>
+        <a href="#" class="nav-item"><i class="fas fa-inbox"></i> Inbox</a>
+        <a href="#" class="nav-item"><i class="fas fa-user"></i> Perfil</a>
+    </footer>
+
+    <script src="app.js" type="module"></script>
 </body>
-</html>
+    </html>
+    
