@@ -10,43 +10,46 @@
 
 html, body {
     height: 100%;
-    /* Define a fonte padrão, você pode importar outras como 'Poppins' do Google Fonts */
     font-family: Arial, sans-serif; 
     background-color: #000;
-    color: white; /* Cor padrão do texto */
+    color: white; 
     overflow: hidden; /* CRUCIAL: Evita a barra de rolagem padrão do navegador */
 }
 
+.hidden { display: none !important; }
+
+/* O Main Container envolve o feed e o perfil, ajustando-se à barra de navegação */
+.main-container {
+    height: calc(100vh - 60px); 
+    overflow: hidden;
+}
+
 /* ====================================================================== */
-/* 2. CONFIGURAÇÃO DO FEED DE VÍDEOS COM SCROLL-SNAP (A MÁGICA DO TIKTOK) */
+/* 2. FEED DE VÍDEOS COM SCROLL-SNAP */
 /* ====================================================================== */
 
 .feed-container {
-    /* Altura total da tela menos o espaço da barra de navegação inferior */
-    height: calc(100vh - 60px); 
+    height: 100%;
     overflow-y: scroll;
-    /* CRUCIAL: Faz a rolagem "grudar" em cada card, simulando a UX do app */
     scroll-snap-type: y mandatory; 
 }
 
-/* O "card" de cada vídeo precisa ter a altura exata do feed container */
 .video-card {
     position: relative;
     width: 100vw;
-    height: calc(100vh - 60px); 
-    scroll-snap-align: start; /* Ponto de encaixe para a rolagem */
+    height: 100%; 
+    scroll-snap-align: start; 
 }
 
 .video-player {
     width: 100%;
     height: 100%;
-    /* Garante que o vídeo preencha o container sem distorcer (cortando as bordas, se necessário) */
     object-fit: cover; 
 }
 
-/* ====================================================================== */
-/* 3. OVERLAY E CONTEÚDO (Texto e Botões de Ação) */
-/* ====================================================================== */
+/* ---------------------------------- */
+/* Overlay e Interações */
+/* ---------------------------------- */
 
 .video-overlay {
     position: absolute;
@@ -56,9 +59,8 @@ html, body {
     height: 100%;
     display: flex;
     flex-direction: column;
-    justify-content: flex-end; /* Alinha o conteúdo na parte de baixo */
+    justify-content: flex-end; 
     color: white;
-    /* Sombra suave para o texto ser legível sobre qualquer vídeo */
     text-shadow: 0 0 5px rgba(0, 0, 0, 0.7); 
 }
 
@@ -69,32 +71,27 @@ html, body {
     left: 50%;
     transform: translate(-50%, -50%);
     font-size: 80px;
-    opacity: 0; /* Invisível por padrão, só aparece no pause */
+    opacity: 0; 
     transition: opacity 0.3s;
-    pointer-events: none; /* Permite o clique no vídeo por baixo */
+    pointer-events: none; 
 }
 
-/* ---------------------------------- */
-/* Conteúdo Esquerdo (Informações) */
-/* ---------------------------------- */
+/* Conteúdo Esquerdo */
 .video-content-left {
     padding: 0 15px 10px 15px; 
     display: flex;
     align-items: flex-end;
-    /* Adiciona um gradiente suave para ajudar na leitura do texto */
     background: linear-gradient(to top, rgba(0, 0, 0, 0.5), transparent);
 }
 .user-info h2 { font-size: 18px; margin-bottom: 5px; }
 .user-info .description { font-size: 15px; margin-bottom: 5px; }
 .music-info { font-size: 14px; opacity: 0.9; }
 
-/* ---------------------------------- */
 /* Ações Direitas (Like, Share) */
-/* ---------------------------------- */
 .video-actions-right {
     position: absolute;
     right: 15px;
-    bottom: 10px; /* Alinhado com o conteúdo esquerdo */
+    bottom: 10px; 
     display: flex;
     flex-direction: column;
     align-items: center;
@@ -107,12 +104,12 @@ html, body {
     transition: transform 0.1s;
 }
 .action-button:active {
-    transform: scale(1.1); /* Efeito de clique */
+    transform: scale(1.1); 
 }
 .action-button i { font-size: 28px; margin-bottom: 5px; }
 .action-button span { font-size: 12px; }
 
-/* Disco de Música Giratório (Foguinho) */
+/* Disco de Música Giratório */
 .profile-music-disk { margin-top: 25px; }
 .profile-pic-disk {
     width: 50px;
@@ -120,7 +117,6 @@ html, body {
     border-radius: 50%;
     border: 3px solid white; 
     object-fit: cover;
-    /* Animação de Rotação */
     animation: spin 3s linear infinite; 
 }
 @keyframes spin {
@@ -128,8 +124,9 @@ html, body {
     to { transform: rotate(360deg); }
 }
 
+
 /* ====================================================================== */
-/* 4. BARRA DE NAVEGAÇÃO INFERIOR */
+/* 3. BARRA DE NAVEGAÇÃO INFERIOR */
 /* ====================================================================== */
 
 .bottom-nav {
@@ -161,7 +158,7 @@ html, body {
 .upload-btn {
     width: 40px;
     height: 30px;
-    background-color: #25F4EE; /* Cor Ciano/Verde do TikTok */
+    background-color: #25F4EE; 
     color: black;
     border: none;
     border-radius: 5px;
@@ -175,10 +172,9 @@ html, body {
 }
 
 /* ====================================================================== */
-/* 5. MODAIS (Login e Upload) */
+/* 4. MODAIS (LOGIN E UPLOAD) */
 /* ====================================================================== */
 
-/* O estilo é o mesmo para ambos os modais */
 .login-modal, .upload-modal {
     position: fixed;
     top: 0;
@@ -191,7 +187,6 @@ html, body {
     justify-content: center;
     align-items: center;
 }
-.hidden { display: none !important; }
 
 .login-box, .upload-box {
     background-color: #1a1a1a;
@@ -230,13 +225,8 @@ html, body {
 #register-btn { background-color: #ff0050; color: white; }
 #upload-video-btn { background-color: #ff0050; color: white; }
 
-#auth-status, #upload-status { 
-    margin-top: 15px; 
-    color: #ff0050; 
-}
-#upload-status {
-    color: #25F4EE;
-}
+#auth-status { color: #ff0050; }
+#upload-status { color: #25F4EE; margin-top: 15px; }
 
 .close-modal {
     position: absolute;
@@ -246,4 +236,68 @@ html, body {
     font-weight: bold;
     color: white;
     cursor: pointer;
-    }
+}
+
+
+/* ====================================================================== */
+/* 5. ESTILOS DA PÁGINA DE PERFIL */
+/* ====================================================================== */
+
+.profile-view {
+    height: 100%; /* Ajuste para preencher o main-container */
+    overflow-y: scroll;
+    padding-bottom: 20px; 
+}
+
+.profile-header {
+    text-align: center;
+    padding: 30px 0 20px 0;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.profile-pic-main {
+    width: 100px;
+    height: 100px;
+    border-radius: 50%;
+    object-fit: cover;
+    margin-bottom: 10px;
+    border: 3px solid #ff0050; 
+}
+
+#profile-username { font-size: 24px; margin-bottom: 5px; }
+#profile-stats { font-size: 14px; opacity: 0.7; }
+
+.profile-tabs {
+    display: flex;
+    justify-content: space-around;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.tab-btn {
+    background: none;
+    border: none;
+    color: white;
+    padding: 15px 20px;
+    font-size: 16px;
+    cursor: pointer;
+    border-bottom: 3px solid transparent;
+    transition: border-bottom 0.3s;
+}
+
+.tab-btn.active {
+    border-bottom-color: white;
+}
+
+.video-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr); 
+    gap: 1px; 
+    margin-top: 1px;
+}
+
+.video-thumbnail {
+    width: 100%;
+    aspect-ratio: 9/16; 
+    object-fit: cover;
+    background-color: #222;
+                              }
