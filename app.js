@@ -1,27 +1,39 @@
 // ======================================================================
-// 0. CONFIGURAÇÃO DE SERVIÇOS E CREDENCIAIS
+// ⚙️ CONFIGURAÇÃO DO PROJETO "VideoT"
 // ======================================================================
 
-// 🚨 1. SUAS CREDENCIAIS FIREBASE 
+// --- 🔥 FIREBASE ---
 const firebaseConfig = {
-    // Estas são as credenciais que você forneceu anteriormente:
-    apiKey: "AIzaSyBI_4n8aBT9ZPiLy8cwgiQDtD0_CYSKk4E", 
+    apiKey: "AIzaSyBI_4n8aBT9ZPiLy8cwgiQDtD0_CYSKk4E",
     authDomain: "videot-2fcec.firebaseapp.com",
     projectId: "videot-2fcec",
     storageBucket: "videot-2fcec.firebasestorage.app",
     messagingSenderId: "583396995831",
     appId: "1:583396995831:web:6182575e28ea628cc259f2"
 };
-// 🚨 2. SUAS CREDENCIAIS CLOUDINARY
-const CLOUDINARY_CLOUD_NAME = 'dya1jd0mx'; 
-const CLOUDINARY_UPLOAD_PRESET = 'videot_unsigned_preset'; 
-const CLOUDINARY_URL = `CLOUDINARY_URL=cloudinary://<your_api_key>:<your_api_secret>@dya1jd0mx`;
 
+// --- ☁️ CLOUDINARY ---
+const CLOUDINARY_CLOUD_NAME = 'dya1jd0mx';
+// ⚠️ Nota: A API Key/Secret só seriam necessárias para uploads *assinados* do backend.
+// Para uploads diretos do frontend, usamos apenas o Cloud Name e o Preset não assinado.
+// const CLOUDINARY_API_KEY = '638656759857113'; 
+// const CLOUDINARY_API_SECRET = '-jx-m4UFNlLlpvJWycV6Ldb9tn4'; 
+const CLOUDINARY_UPLOAD_PRESET = 'videot_unsigned_preset'; // Usando o nome correto para um preset não assinado.
+
+// ✅ URL para upload (unsigned)
+const CLOUDINARY_URL = `https://api.cloudinary.com/v1_1/${CLOUDINARY_CLOUD_NAME}/video/upload`; // Corrigido para /video/upload
+
+// Inicializar Firebase
 const app = firebase.initializeApp(firebaseConfig);
 const auth = app.auth();
 const db = app.firestore();
 
-// Elementos DOM (Seletivamente)
+
+// ======================================================================
+// 1. VARIÁVEIS DE ESTADO E ELEMENTOS DOM
+// ======================================================================
+
+// Elementos DOM
 const feedContainer = document.querySelector('.feed-container');
 const feedView = document.getElementById('feed-view');
 const profileView = document.getElementById('profile-view');
@@ -42,6 +54,7 @@ const authStatus = document.getElementById('auth-status');
 const filterForYou = document.getElementById('filter-foryou');
 const filterFollowing = document.getElementById('filter-following');
 
+// Variáveis de Estado
 let CURRENT_USER_DATA = null;
 let currentVideoPlayer = null; 
 let unsubscribeFeed = () => {}; 
@@ -49,14 +62,13 @@ let currentFeedFilter = 'for-you';
 
 
 // ======================================================================
-// 1. AUTENTICAÇÃO E PERFIL (COM SEGUIR/DEIXAR DE SEGUIR)
+// 2. AUTENTICAÇÃO E PERFIL (COM SEGUIR/DEIXAR DE SEGUIR)
 // ======================================================================
 
 const fetchUserData = async (uid) => {
     try {
         const doc = await db.collection('users').doc(uid).get();
         if (doc.exists) {
-            // Busca a lista de quem o usuário segue
             const followingSnapshot = await db.collection('users').doc(uid).collection('following').get();
             const following = followingSnapshot.docs.map(doc => doc.id);
             return { uid: uid, ...doc.data(), following: following };
@@ -78,14 +90,12 @@ const toggleFollow = async (targetUserId, followBtn) => {
 
     try {
         if (isFollowing) {
-            // DEIXAR DE SEGUIR
             await myFollowingRef.delete();
             await targetFollowerRef.delete();
             followBtn.textContent = 'Seguir';
             followBtn.classList.remove('following');
             followBtn.classList.add('follow');
         } else {
-            // SEGUIR
             await myFollowingRef.set({});
             await targetFollowerRef.set({});
             followBtn.textContent = 'A Seguir';
@@ -93,7 +103,6 @@ const toggleFollow = async (targetUserId, followBtn) => {
             followBtn.classList.add('following');
         }
         
-        // Atualiza os dados do usuário após a ação
         CURRENT_USER_DATA = await fetchUserData(CURRENT_USER_DATA.uid);
 
     } catch (error) {
@@ -148,7 +157,7 @@ document.getElementById('register-btn').addEventListener('click', async () => {
 
 
 // ======================================================================
-// 2. UPLOAD DE VÍDEO (CORRIGIDO E ROBUSTO)
+// 3. UPLOAD DE VÍDEOS PARA O CLOUDINARY (MANTIDO DA SUA VERSÃO)
 // ======================================================================
 
 const uploadVideoToCloudinary = async (file) => {
@@ -166,7 +175,8 @@ const uploadVideoToCloudinary = async (file) => {
         const data = await response.json();
 
         if (!response.ok || data.error) {
-            throw new Error(data.error ? data.error.message : `Falha de rede: ${response.status}`);
+            // Adicionado a mensagem de erro do Cloudinary para melhor diagnóstico
+            throw new Error(data.error ? data.error.message : `Erro de rede: ${response.status}`);
         }
 
         return data.secure_url;
@@ -183,48 +193,49 @@ const handleVideoUpload = async () => {
     const description = videoDescriptionInput.value;
 
     if (!file || !description) {
-        uploadStatus.textContent = "Selecione um arquivo e adicione a descrição.";
+        uploadStatus.textContent = "Selecione um ficheiro e escreva uma descrição.";
         return;
     }
 
     uploadVideoBtn.disabled = true;
-    uploadStatus.textContent = "A iniciar o upload...";
+    uploadStatus.textContent = "A enviar vídeo...";
 
     try {
         const videoUrl = await uploadVideoToCloudinary(file);
-        
-        // 2. Gravar metadados no Firestore
+
         await db.collection('videos').add({
             userId: CURRENT_USER_DATA.uid,
             username: CURRENT_USER_DATA.username,
             description: description,
-            videoUrl: videoUrl, 
+            videoUrl: videoUrl,
             timestamp: firebase.firestore.FieldValue.serverTimestamp(),
             likesCount: 0,
             commentsCount: 0
         });
 
-        uploadStatus.textContent = "Vídeo postado com sucesso!";
+        uploadStatus.textContent = "✅ Vídeo publicado com sucesso!";
         videoFileInput.value = '';
         videoDescriptionInput.value = '';
         setTimeout(() => uploadModal.classList.add('hidden'), 1500);
 
     } catch (error) {
-        uploadStatus.textContent = "Falha ao postar vídeo. Tente novamente.";
-        console.error("Erro no processo de upload:", error);
+        uploadStatus.textContent = "❌ Erro ao enviar o vídeo. Tente novamente.";
+        console.error("Erro no upload:", error);
     } finally {
         uploadVideoBtn.disabled = false;
     }
 };
 
-// Listeners do Modal de Upload
+// ======================================================================
+// 4. GESTÃO DO MODAL DE UPLOAD (MANTIDO)
+// ======================================================================
 uploadVideoBtn.addEventListener('click', handleVideoUpload);
 openUploadModalBtn.addEventListener('click', () => {
     if (CURRENT_USER_DATA) {
         uploadModal.classList.remove('hidden');
         uploadStatus.textContent = '';
     } else {
-        alert("Por favor, faça login para postar um vídeo.");
+        alert("Inicie sessão para enviar vídeos.");
         loginModal.classList.remove('hidden');
     }
 });
@@ -234,7 +245,7 @@ closeUploadModalBtn.addEventListener('click', () => {
 
 
 // ======================================================================
-// 3. INTERAÇÕES E FEED EM TEMPO REAL (LIKES E COMENTÁRIOS)
+// 5. INTERAÇÕES E FEED EM TEMPO REAL (LIKES, COMENTÁRIOS, FILTROS)
 // ======================================================================
 
 const handleLike = async (videoId, likeBtnElement) => {
@@ -247,11 +258,9 @@ const handleLike = async (videoId, likeBtnElement) => {
     try {
         const likeDoc = await likeRef.get();
         if (likeDoc.exists) {
-            // Retirar Like
             await likeRef.delete();
             await videoRef.update({ likesCount: firebase.firestore.FieldValue.increment(-1) });
         } else {
-            // Dar Like
             await likeRef.set({ userId: userId, timestamp: firebase.firestore.FieldValue.serverTimestamp() });
             await videoRef.update({ likesCount: firebase.firestore.FieldValue.increment(1) });
         }
@@ -276,7 +285,6 @@ const handleComment = (videoId) => {
     }
 };
 
-// Cria o HTML do Card de Vídeo
 const createVideoCard = (video) => {
     const card = document.createElement('div');
     card.className = 'video-card';
@@ -312,7 +320,6 @@ const createVideoCard = (video) => {
     return card;
 };
 
-// Listener do Feed em Tempo Real com Filtro de Seguidores
 const setupRealtimeFeed = (filter = 'for-you') => {
     if (unsubscribeFeed) unsubscribeFeed(); 
     
@@ -370,7 +377,7 @@ filterFollowing.addEventListener('click', () => {
 
 
 // ======================================================================
-// 4. CONTROLE DE VÍDEO E CORREÇÃO DOS LISTENERS (CRUCIAL PARA OS BOTÕES)
+// 6. CONTROLE DE VÍDEO E LISTENERS DINÂMICOS
 // ======================================================================
 
 const handleScroll = () => {
@@ -415,12 +422,10 @@ const setupVideoControl = () => {
         const video = card.querySelector('.video-player');
         const playPauseIcon = card.querySelector('.play-pause-icon');
         
-        // Clonagem para limpar o listener de Play/Pause anterior
         const oldCard = card.cloneNode(true);
         card.parentNode.replaceChild(oldCard, card);
         
         oldCard.addEventListener('click', function togglePlayPause(event) {
-            // Garante que o clique não foi em um botão de ação lateral (Like, Comment, etc.)
             if (!event.target.closest('.video-actions-right')) {
                 if (video.paused) {
                     video.play();
@@ -438,7 +443,7 @@ const setupVideoControl = () => {
 
 
 const setupInteractionListeners = () => {
-    // 1. Listeners de Likes e Comentários (Clonagem para garantir que funcionem após a renderização)
+    // 1. Listeners de Likes e Comentários 
     document.querySelectorAll('.like-btn').forEach(btn => {
         const newBtn = btn.cloneNode(true);
         btn.parentNode.replaceChild(newBtn, btn);
@@ -468,7 +473,6 @@ const setupInteractionListeners = () => {
             const targetUserId = event.currentTarget.dataset.userId;
             
             if (CURRENT_USER_DATA) {
-                // Passa o ID do usuário para o qual queremos navegar
                 navigateTo('profile', targetUserId); 
             } else {
                 alert("Faça login para ver perfis.");
@@ -479,13 +483,12 @@ const setupInteractionListeners = () => {
 
 
 // ======================================================================
-// 5. PÁGINA DE PERFIL E DMs
+// 7. PÁGINA DE PERFIL E DMs
 // ======================================================================
 
 const renderProfilePage = async (targetUserId) => {
     if (!targetUserId) return;
     
-    // Busca dados do usuário que está sendo visualizado
     const targetUserDoc = await db.collection('users').doc(targetUserId).get();
     if (!targetUserDoc.exists) return;
 
@@ -493,21 +496,21 @@ const renderProfilePage = async (targetUserId) => {
     
     // Lógica para o botão Seguir
     const followBtn = document.getElementById('follow-toggle-btn');
-    followBtn.onclick = null; // Limpa listener anterior
+    followBtn.onclick = null; 
     followBtn.classList.remove('hidden', 'follow', 'following');
 
     if (CURRENT_USER_DATA && targetUserId === CURRENT_USER_DATA.uid) {
-        followBtn.classList.add('hidden'); // Esconde no próprio perfil
+        followBtn.classList.add('hidden');
     } else if (CURRENT_USER_DATA) {
         const isFollowing = CURRENT_USER_DATA.following.includes(targetUserId);
         followBtn.textContent = isFollowing ? 'A Seguir' : 'Seguir';
         followBtn.classList.add(isFollowing ? 'following' : 'follow');
         followBtn.onclick = () => toggleFollow(targetUserId, followBtn);
     } else {
-        followBtn.classList.add('hidden'); // Esconde se não estiver logado
+        followBtn.classList.add('hidden');
     }
 
     // 1. Atualizar informações do cabeçalho
     document.getElementById('profile-username').textContent = `@${userData.username}`;
     document.getElementById('profile-pic').src = `https://i.pravatar.cc/150?img=${targetUserId.slice(-1)}`;
-    document.getElementById('profile-stats').textContent
+    document.getElementById('profile-stats').textContent = `0 Seguidores • 0 Seguind
