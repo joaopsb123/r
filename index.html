@@ -1,176 +1,68 @@
-<!doctype html>
-<html lang="pt-PT">
+<!DOCTYPE html>
+<html lang="pt-BR">
 <head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>VideoT</title>
-  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
-  <!-- Cloudinary Upload Widget -->
-  <script src="https://widget.cloudinary.com/v2.0/global/all.js"></script>
-  <style>
-    /* estilo mínimo */
-    body{font-family:system-ui,Segoe UI,Roboto,Helvetica,Arial; padding:16px}
-    #feed{display:flex;flex-direction:column;gap:12px;max-width:720px}
-    .card{border:1px solid #ddd;padding:8px;border-radius:8px}
-    video{max-width:100%;height:auto;border-radius:6px}
-  </style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>VideoT - Onde os Vídeos Explodem</title>
+    <link rel="stylesheet" href="style.css"> 
 </head>
 <body>
-  <h1>VideoT</h1>
-  <div id="auth">
-    <button id="btnSignIn">Entrar com Google</button>
-    <button id="btnSignOut" style="display:none">Sair</button>
-    <span id="userInfo"></span>
-  </div>
 
-  <div id="actions" style="margin-top:12px; display:none">
-    <button id="btnUpload">Enviar vídeo / foto</button>
-    <button id="btnProfile">Ver perfil</button>
-  </div>
+    <div class="feed-container">
 
-  <h2>Feed</h2>
-  <div id="feed"></div>
+        <div class="video-card">
+            
+            <video class="video-player" loop preload="auto">
+                Seu navegador não suporta a tag de vídeo.
+            </video>
 
-<script>
-/* ====== 1) CONFIGURAÇÃO FIREBASE (usa as tuas credenciais) ====== */
-const firebaseConfig = {
-  apiKey: "PUX-API-KEY",
-  authDomain: "YOUR-PROJECT.firebaseapp.com",
-  projectId: "YOUR-PROJECT",
-  // ... resto das configs
-};
-firebase.initializeApp(firebaseConfig);
-const auth = firebase.auth();
-const db = firebase.firestore();
+            <div class="video-overlay">
 
-/* ====== 2) AUTENTICAÇÃO GOOGLE ======
-   Usa o fluxo do Firebase Auth para web. */
-const provider = new firebase.auth.GoogleAuthProvider();
+                <div class="video-content-left">
+                    <div class="user-info">
+                        <h3>@NomeDeUsuario</h3>
+                        <p>Descrição cativante do vídeo com #hashtags.</p>
+                        <div class="music-info">
+                            <i class="icon-music">🎵</i> Música original de **VideoT**
+                        </div>
+                    </div>
+                </div>
 
-document.getElementById('btnSignIn').onclick = async () => {
-  try {
-    await auth.signInWithPopup(provider);
-  } catch(e){ console.error("SignIn:", e); alert("Erro ao iniciar sessão"); }
-};
+                <div class="video-actions-right">
+                    
+                    <div class="action-button">
+                        <i class="icon-heart">🤍</i>
+                        <span>99.9K</span>
+                    </div>
 
-document.getElementById('btnSignOut').onclick = () => auth.signOut();
+                    <div class="action-button">
+                        <i class="icon-comment">💬</i>
+                        <span>1.2K</span>
+                    </div>
+                    
+                    <div class="action-button">
+                        <i class="icon-share">🔗</i>
+                        <span>500</span>
+                    </div>
 
-auth.onAuthStateChanged(async user => {
-  const uiUser = document.getElementById('userInfo');
-  const actions = document.getElementById('actions');
-  if(user){
-    uiUser.textContent = `${user.displayName} (${user.email})`;
-    document.getElementById('btnSignIn').style.display = 'none';
-    document.getElementById('btnSignOut').style.display = '';
-    actions.style.display = '';
-    // Garanta que exista documento do perfil no Firestore
-    const udoc = db.collection('users').doc(user.uid);
-    const snap = await udoc.get();
-    if(!snap.exists){
-      await udoc.set({
-        displayName: user.displayName || "",
-        email: user.email,
-        photoURL: user.photoURL || "",
-        createdAt: firebase.firestore.FieldValue.serverTimestamp()
-      });
-    }
-    loadFeed();
-  } else {
-    uiUser.textContent = '';
-    document.getElementById('btnSignIn').style.display = '';
-    document.getElementById('btnSignOut').style.display = 'none';
-    actions.style.display = 'none';
-    loadFeed(); // feed público
-  }
-});
+                    <div class="action-button profile-pic">
+                        <img src="URL_DA_FOTO_PERFIL" alt="Perfil">
+                    </div>
 
-/* ====== 3) CLOUDINARY UPLOAD WIDGET ======
-   Duas opções:
-   - Unsigned (simples, mas menos seguro) -> usar preset unsigned.
-   - Signed (recomendado): widget recebe assinatura gerada pelo teu backend.
-   Abaixo mostramos o flow com o Widget + chamada a endpoint /cloudinary-sign para obter assinatura. */
+                </div>
+            </div>
+            
+            <footer class="bottom-nav">
+                <a href="#" class="nav-item active"><i class="icon-home">🏠</i> Início</a>
+                <a href="#" class="nav-item"><i class="icon-discover">🔍</i> Descobrir</a>
+                <button class="nav-item upload-btn">+</button>
+                <a href="#" class="nav-item"><i class="icon-messages">✉️</i> Caixa de Entrada</a>
+                <a href="#" class="nav-item"><i class="icon-profile">👤</i> Perfil</a>
+            </footer>
 
-const cloudName = "YOUR_CLOUD_NAME"; // substitui
-const uploadPreset = "YOUR_UNSIGNED_PRESET"; // só se escolher unsigned
+        </div>
+        
+        </div>
 
-document.getElementById('btnUpload').onclick = async () => {
-  const user = auth.currentUser;
-  if(!user){ alert("Faz login primeiro."); return; }
-
-  // Exemplo: abrir widget em modo assinado -> gerar assinatura no backend
-  // Faz pedido ao backend para obter timestamp + signature + api_key se necessário
-  let signatureData;
-  try{
-    const resp = await fetch('/cloudinary-sign', { method:'POST' });
-    if(!resp.ok) throw new Error('Falha ao obter assinatura');
-    signatureData = await resp.json(); // { signature, timestamp, api_key }
-  } catch(e){
-    console.warn("Falling back to unsigned (dev only).", e);
-    signatureData = null;
-  }
-
-  const options = {
-    cloudName,
-    sources: ["local","url","camera"],
-    multiple: false,
-    resourceType: "video", // video ou auto
-    maxFileSize: 200000000, // ~200MB
-    // Se tiveres assinatura, passa-a:
-    uploadSignature: signatureData ? signatureData.signature : undefined,
-    uploadSignatureTimestamp: signatureData ? signatureData.timestamp : undefined,
-    uploadSignatureKey: signatureData ? signatureData.api_key : undefined,
-    // se usares unsigned, podes passar uploadPreset
-    uploadPreset: signatureData ? undefined : uploadPreset
-  };
-
-  const widget = window.cloudinary.openUploadWidget(options,
-    async (error, result) => {
-      if(error) return console.error("Upload Widget error:", error);
-      if(result && result.event === "success"){
-        const info = result.info; // object com secure_url, public_id, resource_type, etc
-        console.log("Uploaded:", info);
-        // Guarda metadados no Firestore
-        await db.collection('videos').add({
-          ownerId: user.uid,
-          ownerName: user.displayName || null,
-          cloudinaryPublicId: info.public_id,
-          url: info.secure_url,
-          resource_type: info.resource_type,
-          format: info.format,
-          createdAt: firebase.firestore.FieldValue.serverTimestamp(),
-          likes: 0,
-          description: ""
-        });
-        loadFeed(); // actualizar feed
-      }
-  });
-
-  // abrir widget
-  // (se preferires usar createUploadWidget, consulta docs Cloudinary)
-};
-
-/* ====== 4) FEED SIMPLES: puxa últimos vídeos da coleção 'videos' ====== */
-async function loadFeed(){
-  const feed = document.getElementById('feed');
-  feed.innerHTML = '<div class="card">A carregar...</div>';
-  const snap = await db.collection('videos').orderBy('createdAt','desc').limit(20).get();
-  if(snap.empty){ feed.innerHTML = '<div class="card">Ainda sem vídeos</div>'; return; }
-  feed.innerHTML = '';
-  snap.forEach(doc => {
-    const d = doc.data();
-    const el = document.createElement('div');
-    el.className = 'card';
-    // usa <video> para vídeos; se for imagem podes usar <img>
-    el.innerHTML = `
-      <div><strong>${d.ownerName||'Utilizador'}</strong></div>
-      ${d.resource_type === 'video' ? `<video controls src="${d.url}"></video>` : `<img src="${d.url}" alt="media" style="max-width:100%"/>`}
-      <div>Likes: ${d.likes || 0}</div>
-    `;
-    feed.appendChild(el);
-  });
-}
-</script>
 </body>
 </html>
