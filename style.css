@@ -1,7 +1,185 @@
-/* Adicione este código ao final do seu arquivo style.css */
+/* ====================================================================== */
+/* 1. RESET BÁSICO E CONFIGURAÇÕES DE TELA CHEIA */
+/* ====================================================================== */
 
-/* MODAL DE UPLOAD */
-.upload-modal {
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+html, body {
+    height: 100%;
+    /* Define a fonte padrão, você pode importar outras como 'Poppins' do Google Fonts */
+    font-family: Arial, sans-serif; 
+    background-color: #000;
+    color: white; /* Cor padrão do texto */
+    overflow: hidden; /* CRUCIAL: Evita a barra de rolagem padrão do navegador */
+}
+
+/* ====================================================================== */
+/* 2. CONFIGURAÇÃO DO FEED DE VÍDEOS COM SCROLL-SNAP (A MÁGICA DO TIKTOK) */
+/* ====================================================================== */
+
+.feed-container {
+    /* Altura total da tela menos o espaço da barra de navegação inferior */
+    height: calc(100vh - 60px); 
+    overflow-y: scroll;
+    /* CRUCIAL: Faz a rolagem "grudar" em cada card, simulando a UX do app */
+    scroll-snap-type: y mandatory; 
+}
+
+/* O "card" de cada vídeo precisa ter a altura exata do feed container */
+.video-card {
+    position: relative;
+    width: 100vw;
+    height: calc(100vh - 60px); 
+    scroll-snap-align: start; /* Ponto de encaixe para a rolagem */
+}
+
+.video-player {
+    width: 100%;
+    height: 100%;
+    /* Garante que o vídeo preencha o container sem distorcer (cortando as bordas, se necessário) */
+    object-fit: cover; 
+}
+
+/* ====================================================================== */
+/* 3. OVERLAY E CONTEÚDO (Texto e Botões de Ação) */
+/* ====================================================================== */
+
+.video-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-end; /* Alinha o conteúdo na parte de baixo */
+    color: white;
+    /* Sombra suave para o texto ser legível sobre qualquer vídeo */
+    text-shadow: 0 0 5px rgba(0, 0, 0, 0.7); 
+}
+
+/* Ícone de Play/Pause Central */
+.play-pause-icon {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    font-size: 80px;
+    opacity: 0; /* Invisível por padrão, só aparece no pause */
+    transition: opacity 0.3s;
+    pointer-events: none; /* Permite o clique no vídeo por baixo */
+}
+
+/* ---------------------------------- */
+/* Conteúdo Esquerdo (Informações) */
+/* ---------------------------------- */
+.video-content-left {
+    padding: 0 15px 10px 15px; 
+    display: flex;
+    align-items: flex-end;
+    /* Adiciona um gradiente suave para ajudar na leitura do texto */
+    background: linear-gradient(to top, rgba(0, 0, 0, 0.5), transparent);
+}
+.user-info h2 { font-size: 18px; margin-bottom: 5px; }
+.user-info .description { font-size: 15px; margin-bottom: 5px; }
+.music-info { font-size: 14px; opacity: 0.9; }
+
+/* ---------------------------------- */
+/* Ações Direitas (Like, Share) */
+/* ---------------------------------- */
+.video-actions-right {
+    position: absolute;
+    right: 15px;
+    bottom: 10px; /* Alinhado com o conteúdo esquerdo */
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 25px; 
+}
+
+.action-button { 
+    text-align: center; 
+    cursor: pointer; 
+    transition: transform 0.1s;
+}
+.action-button:active {
+    transform: scale(1.1); /* Efeito de clique */
+}
+.action-button i { font-size: 28px; margin-bottom: 5px; }
+.action-button span { font-size: 12px; }
+
+/* Disco de Música Giratório (Foguinho) */
+.profile-music-disk { margin-top: 25px; }
+.profile-pic-disk {
+    width: 50px;
+    height: 50px;
+    border-radius: 50%;
+    border: 3px solid white; 
+    object-fit: cover;
+    /* Animação de Rotação */
+    animation: spin 3s linear infinite; 
+}
+@keyframes spin {
+    from { transform: rotate(0deg); }
+    to { transform: rotate(360deg); }
+}
+
+/* ====================================================================== */
+/* 4. BARRA DE NAVEGAÇÃO INFERIOR */
+/* ====================================================================== */
+
+.bottom-nav {
+    position: fixed; 
+    bottom: 0;
+    left: 0;
+    width: 100%;
+    height: 60px;
+    background-color: #000; 
+    border-top: 1px solid rgba(255, 255, 255, 0.1);
+    display: flex;
+    justify-content: space-around;
+    align-items: center;
+    z-index: 10; 
+}
+
+.nav-item {
+    color: white;
+    font-size: 12px;
+    text-decoration: none;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    opacity: 0.6;
+}
+
+.nav-item i { font-size: 20px; }
+.nav-item.active { opacity: 1; }
+.upload-btn {
+    width: 40px;
+    height: 30px;
+    background-color: #25F4EE; /* Cor Ciano/Verde do TikTok */
+    color: black;
+    border: none;
+    border-radius: 5px;
+    font-size: 16px; 
+    font-weight: bold;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    padding: 0 8px; 
+    cursor: pointer;
+}
+
+/* ====================================================================== */
+/* 5. MODAIS (Login e Upload) */
+/* ====================================================================== */
+
+/* O estilo é o mesmo para ambos os modais */
+.login-modal, .upload-modal {
     position: fixed;
     top: 0;
     left: 0;
@@ -13,10 +191,9 @@
     justify-content: center;
     align-items: center;
 }
-.upload-modal.hidden {
-    display: none;
-}
-.upload-box {
+.hidden { display: none !important; }
+
+.login-box, .upload-box {
     background-color: #1a1a1a;
     padding: 30px;
     border-radius: 10px;
@@ -26,6 +203,8 @@
     max-width: 400px;
     position: relative;
 }
+
+.login-box input, 
 .upload-box input[type="text"], 
 .upload-box input[type="file"] {
     display: block;
@@ -37,15 +216,28 @@
     background-color: #222;
     color: white;
 }
+
+.login-box button,
 #upload-video-btn {
     padding: 10px 20px;
+    margin: 5px;
     border: none;
     border-radius: 5px;
     cursor: pointer;
     font-weight: bold;
-    background-color: #ff0050; /* Cor de destaque */
-    color: white;
 }
+#login-btn { background-color: #25F4EE; color: black; }
+#register-btn { background-color: #ff0050; color: white; }
+#upload-video-btn { background-color: #ff0050; color: white; }
+
+#auth-status, #upload-status { 
+    margin-top: 15px; 
+    color: #ff0050; 
+}
+#upload-status {
+    color: #25F4EE;
+}
+
 .close-modal {
     position: absolute;
     top: 10px;
@@ -54,8 +246,4 @@
     font-weight: bold;
     color: white;
     cursor: pointer;
-}
-#upload-status {
-    margin-top: 15px;
-    color: #25F4EE;
-}
+    }
