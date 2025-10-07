@@ -1,335 +1,37 @@
-<!doctype html>
-<html lang="pt">
+<!DOCTYPE html>
+<html lang="pt-BR">
 <head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>MiniRede - Demo (Firebase)</title>
-  <style>
-    :root{--accent:#ff3b6b;--muted:#666}
-    *{box-sizing:border-box}
-    body{font-family:Inter,system-ui,Arial,sans-serif;margin:0;background:#fafafa;color:#111}
-    header{background:white;box-shadow:0 1px 0 rgba(0,0,0,0.05);padding:12px 16px;display:flex;align-items:center;gap:12px;position:sticky;top:0;z-index:10}
-    .logo{font-weight:700;color:var(--accent);font-size:20px}
-    .container{max-width:900px;margin:20px auto;padding:0 16px}
-    .card{background:white;border-radius:10px;padding:12px;margin-bottom:14px;box-shadow:0 6px 18px rgba(0,0,0,0.04)}
-    .row{display:flex;gap:12px;align-items:center}
-    input[type=text],input[type=email],input[type=password],textarea,select{width:100%;padding:8px;border-radius:8px;border:1px solid #e6e6e6}
-    button{background:var(--accent);color:white;border:0;padding:8px 12px;border-radius:8px;cursor:pointer}
-    .feed-item img{max-width:100%;border-radius:8px}
-    .meta{font-size:13px;color:var(--muted)}
-    .small{font-size:13px}
-    .center{display:flex;justify-content:center}
-    .profile-pill{background:#f6f6f6;padding:6px 10px;border-radius:999px}
-    .like-btn{background:transparent;border:0;cursor:pointer}
-    .hidden{display:none}
-    .muted{color:var(--muted)}
-    .actions{display:flex;gap:8px}
-    .post-footer{display:flex;justify-content:space-between;align-items:center;margin-top:8px}
-    .avatar{width:36px;height:36px;border-radius:50%;background:#eee;display:inline-block}
-    @media(min-width:800px){.row{align-items:flex-start}}
-  </style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>VideoApp Clone - Firebase</title>
+    <style>
+        body { font-family: sans-serif; display: flex; flex-direction: column; align-items: center; }
+        .upload-section, .feed-section { margin-top: 20px; padding: 20px; border: 1px solid #ccc; width: 80%; max-width: 600px; }
+        .video-item { border: 1px solid #eee; margin-bottom: 15px; padding: 10px; }
+        .video-item video { width: 100%; max-height: 400px; background: #000; }
+        h2 { color: #d9534f; }
+    </style>
 </head>
 <body>
-  <header>
-    <div class="logo">MiniRede</div>
-    <div style="flex:1"></div>
-    <div id="userArea"></div>
-  </header>
 
-  <div class="container">
-    <!-- Auth Card -->
-    <div id="authCard" class="card">
-      <h3>Entrar / Registar</h3>
-      <div style="display:flex;gap:12px;flex-wrap:wrap">
-        <div style="flex:1;min-width:260px">
-          <p class="meta">Regista-te com email ou entra anonimamente para testar.</p>
-          <input id="email" type="email" placeholder="Email" />
-          <input id="password" type="password" placeholder="Senha (min 6)" style="margin-top:8px" />
-          <div style="display:flex;gap:8px;margin-top:8px">
-            <button id="signupBtn">Registar</button>
-            <button id="loginBtn2">Entrar</button>
-          </div>
-          <div style="margin-top:8px" class="muted">ou</div>
-          <div style="display:flex;gap:8px;margin-top:8px">
-            <button id="anonBtn">Entrar Anónimo</button>
-            <button id="setNameBtn">Criar/Editar Nome</button>
-          </div>
+    <h1>Meu Vídeo App (TikTok Clone Simples)</h1>
+
+    <div class="upload-section">
+        <h2>1. Fazer Upload</h2>
+        <input type="file" id="videoFile" accept="video/*">
+        <input type="text" id="videoTitle" placeholder="Título do Vídeo" style="width: 100%; margin: 10px 0;">
+        <button onclick="uploadVideo()">Upload e Postar</button>
+        <p id="uploadStatus"></p>
+    </div>
+
+    <div class="feed-section">
+        <h2>2. Feed de Vídeos</h2>
+        <div id="videoFeed">
+            <p>Carregando vídeos...</p>
         </div>
-        <div style="width:280px">
-          <h4>Nome de utilizador</h4>
-          <input id="displayNameInput" type="text" placeholder="Nome público (ex: João123)" />
-          <p class="meta">O nome será mostrado nas publicações. Padrão: email local/anónimo.</p>
-        </div>
-      </div>
     </div>
 
-    <!-- Post Card -->
-    <div id="postCard" class="card hidden">
-      <h3>Nova publicação</h3>
-      <div style="display:flex;gap:12px;align-items:center">
-        <textarea id="caption" rows="2" placeholder="O que se passa?" style="flex:1"></textarea>
-        <input id="imageInput" type="file" accept="image/*" />
-      </div>
-      <div style="display:flex;gap:8px;margin-top:8px">
-        <button id="postBtn">Publicar</button>
-        <button id="clearBtn" style="background:#ddd;color:#111">Limpar</button>
-      </div>
-      <p class="meta">Imagens são guardadas no Firebase Storage. Posts em Firestore (coleção <code>posts</code>).</p>
-    </div>
+    <script src="app.js"></script>
 
-    <!-- Feed -->
-    <div id="feed" class="card">
-      <h3>Feed</h3>
-      <div id="feedList"></div>
-    </div>
-  </div>
-
-  <script type="module">
-    // ---------- CONFIGURAÇÃO FIREBASE (COLA AQUI) ----------
-    const firebaseConfig = {
-  apiKey: "AIzaSyAi4ov0jXHiH645K_zXDpO0yOtosZHQ0Ww",
-  authDomain: "socialapp-b67e0.firebaseapp.com",
-  projectId: "socialapp-b67e0",
-  storageBucket: "socialapp-b67e0.firebasestorage.app",
-  messagingSenderId: "798450413930",
-  appId: "1:798450413930:web:5858e81610004e43417513",
-  measurementId: "G-ZN5L3MXXFG"
-};
-    // -------------------------------------------------------
-
-    import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js';
-    import { getFirestore, collection, addDoc, serverTimestamp, onSnapshot, query, orderBy, doc, updateDoc, arrayUnion, arrayRemove, getDoc, deleteDoc, setDoc } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js';
-    import { getStorage, ref as sRef, uploadBytes, getDownloadURL, deleteObject } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-storage.js';
-    import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, signInAnonymously, onAuthStateChanged, signOut, updateProfile } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js';
-
-    const app = initializeApp(firebaseConfig);
-    const db = getFirestore(app);
-    const storage = getStorage(app);
-    const auth = getAuth(app);
-
-    // UI refs
-    const authCard = document.getElementById('authCard');
-    const postCard = document.getElementById('postCard');
-    const feedList = document.getElementById('feedList');
-    const userArea = document.getElementById('userArea');
-
-    const emailInput = document.getElementById('email');
-    const passwordInput = document.getElementById('password');
-    const signupBtn = document.getElementById('signupBtn');
-    const loginBtn2 = document.getElementById('loginBtn2');
-    const anonBtn = document.getElementById('anonBtn');
-    const displayNameInput = document.getElementById('displayNameInput');
-    const setNameBtn = document.getElementById('setNameBtn');
-
-    const captionInput = document.getElementById('caption');
-    const imageInput = document.getElementById('imageInput');
-    const postBtn = document.getElementById('postBtn');
-    const clearBtn = document.getElementById('clearBtn');
-
-    function escapeHtml(str){ return String(str||'').replace(/[&<>"']/g, (m)=>({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"}[m])); }
-
-    // ---------- Autenticação ----------
-    signupBtn.addEventListener('click', async ()=>{
-      const email = emailInput.value.trim();
-      const pass = passwordInput.value;
-      if(!email || pass.length < 6) return alert('Email válido e senha com pelo menos 6 caracteres.');
-      try{
-        const cred = await createUserWithEmailAndPassword(auth, email, pass);
-        // define displayName se tiver sido preenchido
-        const dn = displayNameInput.value.trim();
-        if(dn) await updateProfile(cred.user, { displayName: dn });
-        alert('Conta criada!');
-      }catch(e){console.error(e);alert('Erro a registar: '+e.message);}    
-    });
-
-    loginBtn2.addEventListener('click', async ()=>{
-      const email = emailInput.value.trim();
-      const pass = passwordInput.value;
-      if(!email || !pass) return alert('Preenche email e senha.');
-      try{ await signInWithEmailAndPassword(auth, email, pass); }catch(e){console.error(e);alert('Erro a entrar: '+e.message);}    
-    });
-
-    anonBtn.addEventListener('click', async ()=>{
-      try{ await signInAnonymously(auth); }catch(e){console.error(e);alert('Erro a entrar anonimamente: '+e.message);}    
-    });
-
-    setNameBtn.addEventListener('click', async ()=>{
-      const dn = displayNameInput.value.trim();
-      const user = auth.currentUser;
-      if(!user) return alert('Entra primeiro.');
-      if(!dn) return alert('Escreve um nome.');
-      try{ await updateProfile(user, { displayName: dn }); alert('Nome atualizado.'); }catch(e){console.error(e);alert('Erro ao atualizar nome.');}
-    });
-
-    // logout
-    function renderUserArea(user){
-      if(!user){
-        userArea.innerHTML = '<button onclick="document.getElementById(\'email\').focus()">Entrar</button>';
-        postCard.classList.add('hidden');
-        authCard.classList.remove('hidden');
-      } else {
-        const name = user.displayName || (user.email? user.email.split('@')[0] : 'Anónimo');
-        userArea.innerHTML = `<div class=\"row\"><div class=\"profile-pill\">${escapeHtml(name)}</div>&nbsp;<div class=\"actions\"><button id=\"logoutBtn\">Sair</button></div></div>`;
-        document.getElementById('logoutBtn').addEventListener('click', async ()=>{ await signOut(auth); });
-        postCard.classList.remove('hidden');
-        authCard.classList.add('hidden');
-      }
-    }
-
-    // Observe auth state
-    onAuthStateChanged(auth, (user)=>{
-      renderUserArea(user);
-    });
-
-    // ---------- Publicar posts ----------
-    postBtn.addEventListener('click', async ()=>{
-      const user = auth.currentUser;
-      if(!user) return alert('Entra antes de publicar.');
-      const caption = captionInput.value.trim();
-      const file = imageInput.files[0];
-      postBtn.disabled = true; postBtn.textContent = 'A enviar...';
-      try{
-        let imageUrl = '';
-        let imagePath = '';
-        if(file){
-          imagePath = `posts/${user.uid}_${Date.now()}_${file.name}`;
-          const storageRef = sRef(storage, imagePath);
-          await uploadBytes(storageRef, file);
-          imageUrl = await getDownloadURL(storageRef);
-        }
-        const postsCol = collection(db, 'posts');
-        await addDoc(postsCol, {
-          authorId: user.uid,
-          authorName: user.displayName || (user.email? user.email.split('@')[0] : 'Anónimo'),
-          caption,
-          imageUrl,
-          imagePath: imagePath || null,
-          likes: [],
-          createdAt: serverTimestamp()
-        });
-        captionInput.value = ''; imageInput.value = '';
-      }catch(e){console.error(e);alert('Erro ao publicar: '+e.message);}      
-      postBtn.disabled = false; postBtn.textContent = 'Publicar';
-    });
-
-    clearBtn.addEventListener('click', ()=>{ captionInput.value=''; imageInput.value=''; });
-
-    // ---------- Feed realtime com likes, apagar e comentários básicos ----------
-    const postsCol = collection(db, 'posts');
-    const q = query(postsCol, orderBy('createdAt','desc'));
-    onSnapshot(q, (snap)=>{
-      feedList.innerHTML = '';
-      snap.forEach(docSnap=>{
-        const data = docSnap.data();
-        const id = docSnap.id;
-        const created = data.createdAt && data.createdAt.toDate ? new Date(data.createdAt.toDate()).toLocaleString() : '';
-        const el = document.createElement('div'); el.className = 'feed-item';
-        el.innerHTML = `
-          <div class="card">
-            <div class="row" style="justify-content:space-between">
-              <div style="display:flex;gap:8px;align-items:center">
-                <div class=\"avatar\"></div>
-                <div>
-                  <strong>${escapeHtml(data.authorName || 'Anónimo')}</strong>
-                  <div class=\"meta small\">${escapeHtml(created)}</div>
-                </div>
-              </div>
-              <div class="actions">
-                <button class="like-btn" data-id="${id}">❤️ <span class="like-count">${(data.likes||[]).length}</span></button>
-                ${data.authorId === (auth.currentUser && auth.currentUser.uid) ? `<button class=\"delete-btn\" data-id=\"${id}\">Apagar</button>` : ''}
-              </div>
-            </div>
-            <div style="margin-top:10px">${escapeHtml(data.caption || '')}</div>
-            ${data.imageUrl ? `<div style="margin-top:10px"><img src=\"${data.imageUrl}\" alt=\"post\" /></div>` : ''}
-            <div class=\"post-footer\">
-              <div>
-                <input class=\"comment-input\" data-id=\"${id}\" placeholder=\"Escreve um comentário...\" />
-                <button class=\"comment-btn\" data-id=\"${id}\">Comentar</button>
-              </div>
-            </div>
-            <div class=\"comments-list\" data-id=\"${id}\"></div>
-          </div>
-        `;
-        feedList.appendChild(el);
-      });
-      attachPostHandlers();
-    });
-
-    async function attachPostHandlers(){
-      const user = auth.currentUser;
-      // likes
-      document.querySelectorAll('.like-btn').forEach(btn=>{
-        btn.onclick = async ()=>{
-          const id = btn.getAttribute('data-id');
-          if(!user) return alert('Entra para gostar');
-          const postRef = doc(db, 'posts', id);
-          const snap = await getDoc(postRef);
-          const data = snap.data();
-          const likes = data.likes || [];
-          if(likes.includes(user.uid)){
-            await updateDoc(postRef, { likes: arrayRemove(user.uid) });
-          } else {
-            await updateDoc(postRef, { likes: arrayUnion(user.uid) });
-          }
-        };
-      });
-
-      // delete
-      document.querySelectorAll('.delete-btn').forEach(btn=>{
-        btn.onclick = async ()=>{
-          const id = btn.getAttribute('data-id');
-          if(!user) return alert('Entra para apagar');
-          const postRef = doc(db, 'posts', id);
-          const snap = await getDoc(postRef);
-          const data = snap.data();
-          if(data.authorId !== user.uid) return alert('Só podes apagar as tuas publicações.');
-          if(data.imagePath){
-            try{ await deleteObject(sRef(storage, data.imagePath)); }catch(e){console.warn('Erro ao apagar imagem:', e.message); }
-          }
-          await deleteDoc(postRef);
-        };
-      });
-
-      // comments (salva como subcoleção 'comments' em cada post)
-      document.querySelectorAll('.comment-btn').forEach(btn=>{
-        btn.onclick = async ()=>{
-          const id = btn.getAttribute('data-id');
-          const input = document.querySelector(`.comment-input[data-id=\"${id}\"]`);
-          const text = input.value.trim();
-          if(!text) return;
-          if(!auth.currentUser) return alert('Entra para comentar');
-          const commentsCol = collection(db, 'posts', id, 'comments');
-          await addDoc(commentsCol, {
-            authorId: auth.currentUser.uid,
-            authorName: auth.currentUser.displayName || (auth.currentUser.email? auth.currentUser.email.split('@')[0] : 'Anónimo'),
-            text,
-            createdAt: serverTimestamp()
-          });
-          input.value = '';
-        };
-      });
-
-      // carregar comentários para cada post
-      document.querySelectorAll('.comments-list').forEach(async (cl)=>{
-        const id = cl.getAttribute('data-id');
-        const commentsCol = collection(db, 'posts', id, 'comments');
-        const qcom = query(commentsCol, orderBy('createdAt','asc'));
-        onSnapshot(qcom, (snap)=>{
-          cl.innerHTML = '';
-          snap.forEach(csnap=>{
-            const d = csnap.data();
-            const created = d.createdAt && d.createdAt.toDate ? new Date(d.createdAt.toDate()).toLocaleString() : '';
-            const div = document.createElement('div');
-            div.className = 'meta';
-            div.style.marginTop = '6px';
-            div.innerHTML = `<strong>${escapeHtml(d.authorName||'Anónimo')}</strong>: ${escapeHtml(d.text)} <div class=\"small muted\">${escapeHtml(created)}</div>`;
-            cl.appendChild(div);
-          });
-        });
-      });
-    }
-
-    // Fim do módulo
-  </script>
 </body>
 </html>
