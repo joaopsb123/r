@@ -12,7 +12,7 @@ const db = app.firestore();
 const analytics = firebase.analytics ? firebase.analytics() : null; // Analítica opcional
 
 // SUAS CONFIGURAÇÕES CLOUDINARY (Cloud-name e Upload Preset)
-const CLOUDINARY_CLOUD_NAME = 'dya1jd0mx';
+const CLOUDINARY_CLOUD_NAME = 'ml_default';
 // **Crie esta preset como "Unsigned" no seu painel do Cloudinary!**
 const CLOUDINARY_UPLOAD_PRESET = 'videot_unsigned_preset'; 
 const CLOUDINARY_URL = `https://api.cloudinary.com/v1_1/${CLOUDINARY_CLOUD_NAME}/video/upload`;
