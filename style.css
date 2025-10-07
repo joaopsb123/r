@@ -1,147 +1,7 @@
-/* RESET E CONFIGURAÇÕES DE TELA CHEIA */
-* {
-    margin: 0;
-    padding: 0;
-    box-sizing: border-box;
-}
+/* Adicione este código ao final do seu arquivo style.css */
 
-html, body {
-    height: 100%;
-    overflow: hidden; /* Evita a barra de rolagem padrão do navegador */
-    font-family: 'Poppins', sans-serif;
-    background-color: #000;
-}
-
-/* 1. CONFIGURAÇÃO DO FEED DE VÍDEOS COM SCROLL-SNAP */
-.feed-container {
-    height: calc(100vh - 60px); /* Altura total menos a navegação inferior */
-    overflow-y: scroll;
-    scroll-snap-type: y mandatory; 
-}
-
-.video-card {
-    position: relative;
-    width: 100vw;
-    height: calc(100vh - 60px); /* Garante que encaixe perfeitamente na tela */
-    scroll-snap-align: start; 
-}
-
-.video-player {
-    width: 100%;
-    height: 100%;
-    object-fit: cover; 
-}
-
-/* 2. OVERLAY E CONTEÚDO */
-.video-overlay {
-    position: absolute;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    display: flex;
-    flex-direction: column;
-    justify-content: flex-end; 
-    color: white;
-    text-shadow: 0 0 5px rgba(0, 0, 0, 0.7); 
-}
-
-/* Ícone de Play/Pause Central */
-.play-pause-icon {
-    position: absolute;
-    top: 50%;
-    left: 50%;
-    transform: translate(-50%, -50%);
-    font-size: 80px;
-    opacity: 0; /* Começa invisível */
-    transition: opacity 0.3s;
-    pointer-events: none; /* Permite o clique no vídeo por baixo */
-}
-
-/* CONTEÚDO ESQUERDO */
-.video-content-left {
-    padding: 0 15px 10px 15px; 
-    display: flex;
-    align-items: flex-end;
-}
-.user-info h2 { font-size: 18px; margin-bottom: 5px; }
-.user-info .description { font-size: 15px; margin-bottom: 5px; }
-.music-info { font-size: 14px; opacity: 0.9; }
-
-/* AÇÕES DIREITAS */
-.video-actions-right {
-    position: absolute;
-    right: 15px;
-    bottom: 10px; 
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 25px; 
-}
-
-.action-button { text-align: center; cursor: pointer; }
-.action-button i { font-size: 28px; margin-bottom: 5px; }
-.action-button span { font-size: 12px; }
-
-/* Disco de Música Giratório */
-.profile-music-disk { margin-top: 25px; }
-.profile-pic-disk {
-    width: 50px;
-    height: 50px;
-    border-radius: 50%;
-    border: 3px solid white; 
-    object-fit: cover;
-    animation: spin 3s linear infinite; 
-}
-@keyframes spin {
-    from { transform: rotate(0deg); }
-    to { transform: rotate(360deg); }
-}
-
-/* 3. BARRA DE NAVEGAÇÃO INFERIOR */
-.bottom-nav {
-    position: fixed; 
-    bottom: 0;
-    left: 0;
-    width: 100%;
-    height: 60px;
-    background-color: #000; 
-    border-top: 1px solid rgba(255, 255, 255, 0.1);
-    display: flex;
-    justify-content: space-around;
-    align-items: center;
-    z-index: 10; 
-}
-
-.nav-item {
-    color: white;
-    font-size: 12px;
-    text-decoration: none;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    opacity: 0.6;
-}
-
-.nav-item i { font-size: 20px; }
-.nav-item.active { opacity: 1; }
-.upload-btn {
-    width: 40px;
-    height: 30px;
-    background-color: #25F4EE; 
-    color: black;
-    border: none;
-    border-radius: 5px;
-    font-size: 16px; 
-    font-weight: bold;
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    padding: 0 8px; 
-}
-
-/* 4. MODAL DE LOGIN */
-.login-modal {
+/* MODAL DE UPLOAD */
+.upload-modal {
     position: fixed;
     top: 0;
     left: 0;
@@ -153,15 +13,21 @@ html, body {
     justify-content: center;
     align-items: center;
 }
-.login-modal.hidden { display: none; }
-.login-box {
+.upload-modal.hidden {
+    display: none;
+}
+.upload-box {
     background-color: #1a1a1a;
     padding: 30px;
     border-radius: 10px;
     text-align: center;
     color: white;
+    width: 90%;
+    max-width: 400px;
+    position: relative;
 }
-.login-box input {
+.upload-box input[type="text"], 
+.upload-box input[type="file"] {
     display: block;
     width: 100%;
     padding: 10px;
@@ -171,14 +37,25 @@ html, body {
     background-color: #222;
     color: white;
 }
-.login-box button {
+#upload-video-btn {
     padding: 10px 20px;
-    margin: 5px;
     border: none;
     border-radius: 5px;
     cursor: pointer;
     font-weight: bold;
+    background-color: #ff0050; /* Cor de destaque */
+    color: white;
 }
-#login-btn { background-color: #25F4EE; color: black; }
-#register-btn { background-color: #ff0050; color: white; }
-#auth-status { margin-top: 15px; color: #ff0050; }
+.close-modal {
+    position: absolute;
+    top: 10px;
+    right: 15px;
+    font-size: 30px;
+    font-weight: bold;
+    color: white;
+    cursor: pointer;
+}
+#upload-status {
+    margin-top: 15px;
+    color: #25F4EE;
+}
