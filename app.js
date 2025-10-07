@@ -4,7 +4,8 @@
 
 // 🚨 1. SUAS CREDENCIAIS FIREBASE 
 const firebaseConfig = {
-    apiKey: "AIzaSyBI_4n8aBT9ZPiLy8cwgiQDtD0_CYSKk4E", // Substitua pelo seu valor
+    // Estas são as credenciais que você forneceu anteriormente:
+    apiKey: "AIzaSyBI_4n8aBT9ZPiLy8cwgiQDtD0_CYSKk4E", 
     authDomain: "videot-2fcec.firebaseapp.com",
     projectId: "videot-2fcec",
     storageBucket: "videot-2fcec.firebasestorage.app",
@@ -12,18 +13,19 @@ const firebaseConfig = {
     appId: "1:583396995831:web:6182575e28ea628cc259f2"
 };
 // 🚨 2. SUAS CREDENCIAIS CLOUDINARY
-const CLOUDINARY_CLOUD_NAME = 'VideoT'; // Substitua pelo seu Cloud Name
-const CLOUDINARY_UPLOAD_PRESET = 'videot_unsigned_preset'; // Use o Preset Não Assinado que você criou
+const CLOUDINARY_CLOUD_NAME = 'dya1jd0mx'; 
+const CLOUDINARY_UPLOAD_PRESET = 'videot_unsigned_preset'; 
 const CLOUDINARY_URL = `https://api.cloudinary.com/v1_1/${CLOUDINARY_CLOUD_NAME}/video/upload`;
 
 const app = firebase.initializeApp(firebaseConfig);
 const auth = app.auth();
 const db = app.firestore();
 
-// Elementos DOM
+// Elementos DOM (Seletivamente)
 const feedContainer = document.querySelector('.feed-container');
 const feedView = document.getElementById('feed-view');
 const profileView = document.getElementById('profile-view');
+const inboxView = document.getElementById('inbox-view');
 const loginModal = document.getElementById('login-modal');
 const uploadModal = document.getElementById('upload-modal');
 const uploadStatus = document.getElementById('upload-status');
@@ -34,41 +36,85 @@ const videoDescriptionInput = document.getElementById('video-description-input')
 const uploadVideoBtn = document.getElementById('upload-video-btn');
 const navFeed = document.getElementById('nav-feed');
 const navProfile = document.getElementById('nav-profile');
+const navInbox = document.getElementById('nav-inbox');
 const userVideosGrid = document.getElementById('user-videos-grid');
 const authStatus = document.getElementById('auth-status');
+const filterForYou = document.getElementById('filter-foryou');
+const filterFollowing = document.getElementById('filter-following');
 
 let CURRENT_USER_DATA = null;
 let currentVideoPlayer = null; 
+let unsubscribeFeed = () => {}; 
+let currentFeedFilter = 'for-you'; 
 
 
 // ======================================================================
-// 1. AUTENTICAÇÃO E INICIALIZAÇÃO
+// 1. AUTENTICAÇÃO E PERFIL (COM SEGUIR/DEIXAR DE SEGUIR)
 // ======================================================================
 
 const fetchUserData = async (uid) => {
     try {
         const doc = await db.collection('users').doc(uid).get();
-        return doc.exists ? { uid: uid, ...doc.data() } : null;
+        if (doc.exists) {
+            // Busca a lista de quem o usuário segue
+            const followingSnapshot = await db.collection('users').doc(uid).collection('following').get();
+            const following = followingSnapshot.docs.map(doc => doc.id);
+            return { uid: uid, ...doc.data(), following: following };
+        }
+        return null;
     } catch (e) {
         console.error("Erro ao buscar dados do usuário:", e);
         return null;
     }
 };
 
+const toggleFollow = async (targetUserId, followBtn) => {
+    if (!CURRENT_USER_DATA || CURRENT_USER_DATA.uid === targetUserId) return;
+
+    const myFollowingRef = db.collection('users').doc(CURRENT_USER_DATA.uid).collection('following').doc(targetUserId);
+    const targetFollowerRef = db.collection('users').doc(targetUserId).collection('followers').doc(CURRENT_USER_DATA.uid);
+
+    const isFollowing = followBtn.classList.contains('following');
+
+    try {
+        if (isFollowing) {
+            // DEIXAR DE SEGUIR
+            await myFollowingRef.delete();
+            await targetFollowerRef.delete();
+            followBtn.textContent = 'Seguir';
+            followBtn.classList.remove('following');
+            followBtn.classList.add('follow');
+        } else {
+            // SEGUIR
+            await myFollowingRef.set({});
+            await targetFollowerRef.set({});
+            followBtn.textContent = 'A Seguir';
+            followBtn.classList.remove('follow');
+            followBtn.classList.add('following');
+        }
+        
+        // Atualiza os dados do usuário após a ação
+        CURRENT_USER_DATA = await fetchUserData(CURRENT_USER_DATA.uid);
+
+    } catch (error) {
+        console.error("Erro ao seguir/deixar de seguir:", error);
+    }
+};
+
 auth.onAuthStateChanged(async (user) => {
     if (user) {
         CURRENT_USER_DATA = await fetchUserData(user.uid);
-        if (!CURRENT_USER_DATA) {
-            // Se o usuário existir no Auth, mas não no Firestore (erro de registro), força logout
+        if (CURRENT_USER_DATA) {
+            loginModal.classList.add('hidden');
+            setupRealtimeFeed(); 
+        } else {
             auth.signOut();
-            return;
         }
-        loginModal.classList.add('hidden');
-        setupRealtimeFeed(); // Inicia o feed
     } else {
         CURRENT_USER_DATA = null;
         loginModal.classList.remove('hidden');
         feedContainer.innerHTML = `<h2 style="color: white; text-align: center; padding-top: 50px;">Faça login para ver o feed.</h2>`;
+        setupRealtimeFeed(currentFeedFilter);
     }
 });
 
@@ -102,7 +148,7 @@ document.getElementById('register-btn').addEventListener('click', async () => {
 
 
 // ======================================================================
-// 2. UPLOAD DE VÍDEO (CLOUD BINARY + FIRESTORE)
+// 2. UPLOAD DE VÍDEO (CORRIGIDO E ROBUSTO)
 // ======================================================================
 
 const uploadVideoToCloudinary = async (file) => {
@@ -117,15 +163,16 @@ const uploadVideoToCloudinary = async (file) => {
             body: formData,
         });
 
-        if (!response.ok) {
-            throw new Error(`Cloudinary retornou erro ${response.status}`);
+        const data = await response.json();
+
+        if (!response.ok || data.error) {
+            throw new Error(data.error ? data.error.message : `Falha de rede: ${response.status}`);
         }
 
-        const data = await response.json();
         return data.secure_url;
     } catch (error) {
-        uploadStatus.textContent = `Erro no Cloudinary: ${error.message}`;
-        throw error;
+        uploadStatus.textContent = `Erro: ${error.message}. Verifique o Cloud Name/Preset.`;
+        throw error; 
     }
 };
 
@@ -151,7 +198,7 @@ const handleVideoUpload = async () => {
             userId: CURRENT_USER_DATA.uid,
             username: CURRENT_USER_DATA.username,
             description: description,
-            videoUrl: videoUrl,
+            videoUrl: videoUrl, 
             timestamp: firebase.firestore.FieldValue.serverTimestamp(),
             likesCount: 0,
             commentsCount: 0
@@ -241,7 +288,7 @@ const createVideoCard = (video) => {
             <i class="fas fa-play play-pause-icon"></i>
             <div class="video-content-left">
                 <div class="user-info">
-                    <h2>@${video.username}</h2>
+                    <h2 class="video-username" data-user-id="${video.userId}">@${video.username}</h2>
                     <p class="description">${video.description}</p>
                     <div class="music-info"><i class="fas fa-music"></i> <span>Música Original</span></div>
                 </div>
@@ -265,37 +312,65 @@ const createVideoCard = (video) => {
     return card;
 };
 
-// Listener do Feed em Tempo Real
-const setupRealtimeFeed = () => {
-    if (unsubscribeFeed) unsubscribeFeed(); // Evita múltiplos listeners
+// Listener do Feed em Tempo Real com Filtro de Seguidores
+const setupRealtimeFeed = (filter = 'for-you') => {
+    if (unsubscribeFeed) unsubscribeFeed(); 
+    
+    let query = db.collection('videos').orderBy('timestamp', 'desc');
 
-    const unsubscribeFeed = db.collection('videos').orderBy('timestamp', 'desc')
-        .onSnapshot(async (snapshot) => {
-            feedContainer.innerHTML = '';
-            
-            const videoPromises = snapshot.docs.map(async (doc) => {
-                const videoData = { id: doc.id, ...doc.data() };
-                
-                if (CURRENT_USER_DATA) {
-                    const likeDoc = await db.collection('videos').doc(videoData.id)
-                        .collection('likes').doc(CURRENT_USER_DATA.uid).get();
-                    videoData.isLiked = likeDoc.exists;
-                }
-                
-                return createVideoCard(videoData);
-            });
+    if (filter === 'following' && CURRENT_USER_DATA && CURRENT_USER_DATA.following.length > 0) {
+        query = query.where('userId', 'in', CURRENT_USER_DATA.following);
+    } else if (filter === 'following') {
+        feedContainer.innerHTML = `<h2 style="color: white; text-align: center; padding-top: 50px;">Siga alguém para ver este feed!</h2>`;
+        setupVideoControl(); 
+        setupInteractionListeners();
+        return;
+    }
 
-            const videoCards = await Promise.all(videoPromises);
-            videoCards.forEach(card => feedContainer.appendChild(card));
+    unsubscribeFeed = query.onSnapshot(async (snapshot) => {
+        feedContainer.innerHTML = '';
+        
+        const videoPromises = snapshot.docs.map(async (doc) => {
+            const videoData = { id: doc.id, ...doc.data() };
             
-            setupVideoControl(); 
-            setupInteractionListeners(); 
+            if (CURRENT_USER_DATA) {
+                const likeDoc = await db.collection('videos').doc(videoData.id)
+                    .collection('likes').doc(CURRENT_USER_DATA.uid).get();
+                videoData.isLiked = likeDoc.exists;
+            }
+            return createVideoCard(videoData);
         });
+
+        const videoCards = await Promise.all(videoPromises);
+        videoCards.forEach(card => feedContainer.appendChild(card));
+        
+        setupVideoControl(); 
+        setupInteractionListeners(); 
+    });
 };
+
+// Listeners de Filtro
+filterForYou.addEventListener('click', () => {
+    filterFollowing.classList.remove('active');
+    filterForYou.classList.add('active');
+    currentFeedFilter = 'for-you';
+    setupRealtimeFeed('for-you');
+});
+
+filterFollowing.addEventListener('click', () => {
+    if (!CURRENT_USER_DATA) {
+        alert("Faça login para usar o filtro 'Seguindo'.");
+        return;
+    }
+    filterForYou.classList.remove('active');
+    filterFollowing.classList.add('active');
+    currentFeedFilter = 'following';
+    setupRealtimeFeed('following');
+});
 
 
 // ======================================================================
-// 4. CONTROLE DE VÍDEO E LISTENERS (CORREÇÃO DOS BOTÕES)
+// 4. CONTROLE DE VÍDEO E CORREÇÃO DOS LISTENERS (CRUCIAL PARA OS BOTÕES)
 // ======================================================================
 
 const handleScroll = () => {
@@ -336,22 +411,24 @@ const handleScroll = () => {
 const setupVideoControl = () => {
     const videoCards = document.querySelectorAll('.video-card');
     
-    // Configura o Play/Pause no Clique (para todos os cards novos)
     videoCards.forEach(card => {
         const video = card.querySelector('.video-player');
         const playPauseIcon = card.querySelector('.play-pause-icon');
         
-        // CORREÇÃO: Remove e Adiciona o Listener para garantir o funcionamento
+        // Clonagem para limpar o listener de Play/Pause anterior
         const oldCard = card.cloneNode(true);
         card.parentNode.replaceChild(oldCard, card);
         
-        oldCard.addEventListener('click', function togglePlayPause() {
-            if (video.paused) {
-                video.play();
-                playPauseIcon.style.opacity = '0';
-            } else {
-                video.pause();
-                playPauseIcon.style.opacity = '1';
+        oldCard.addEventListener('click', function togglePlayPause(event) {
+            // Garante que o clique não foi em um botão de ação lateral (Like, Comment, etc.)
+            if (!event.target.closest('.video-actions-right')) {
+                if (video.paused) {
+                    video.play();
+                    playPauseIcon.style.opacity = '0';
+                } else {
+                    video.pause();
+                    playPauseIcon.style.opacity = '1';
+                }
             }
         });
     });
@@ -361,7 +438,7 @@ const setupVideoControl = () => {
 
 
 const setupInteractionListeners = () => {
-    // CORREÇÃO: Adiciona Listeners de Like
+    // 1. Listeners de Likes e Comentários (Clonagem para garantir que funcionem após a renderização)
     document.querySelectorAll('.like-btn').forEach(btn => {
         const newBtn = btn.cloneNode(true);
         btn.parentNode.replaceChild(newBtn, btn);
@@ -372,7 +449,6 @@ const setupInteractionListeners = () => {
         });
     });
 
-    // CORREÇÃO: Adiciona Listeners de Comentário
     document.querySelectorAll('.comment-btn').forEach(btn => {
         const newBtn = btn.cloneNode(true);
         btn.parentNode.replaceChild(newBtn, btn);
@@ -382,79 +458,56 @@ const setupInteractionListeners = () => {
             handleComment(videoId);
         });
     });
+
+    // 2. Listener de Clique no Nome de Usuário para o Perfil
+    document.querySelectorAll('.video-username').forEach(usernameElement => {
+        const newUsername = usernameElement.cloneNode(true);
+        usernameElement.parentNode.replaceChild(newUsername, usernameElement);
+        
+        newUsername.addEventListener('click', function(event) {
+            const targetUserId = event.currentTarget.dataset.userId;
+            
+            if (CURRENT_USER_DATA) {
+                // Passa o ID do usuário para o qual queremos navegar
+                navigateTo('profile', targetUserId); 
+            } else {
+                alert("Faça login para ver perfis.");
+            }
+        });
+    });
 };
 
 
 // ======================================================================
-// 5. NAVEGAÇÃO E PERFIL FUNCIONAL
+// 5. PÁGINA DE PERFIL E DMs
 // ======================================================================
 
-const renderProfilePage = async () => {
-    if (!CURRENT_USER_DATA) return;
+const renderProfilePage = async (targetUserId) => {
+    if (!targetUserId) return;
+    
+    // Busca dados do usuário que está sendo visualizado
+    const targetUserDoc = await db.collection('users').doc(targetUserId).get();
+    if (!targetUserDoc.exists) return;
+
+    const userData = targetUserDoc.data();
+    
+    // Lógica para o botão Seguir
+    const followBtn = document.getElementById('follow-toggle-btn');
+    followBtn.onclick = null; // Limpa listener anterior
+    followBtn.classList.remove('hidden', 'follow', 'following');
+
+    if (CURRENT_USER_DATA && targetUserId === CURRENT_USER_DATA.uid) {
+        followBtn.classList.add('hidden'); // Esconde no próprio perfil
+    } else if (CURRENT_USER_DATA) {
+        const isFollowing = CURRENT_USER_DATA.following.includes(targetUserId);
+        followBtn.textContent = isFollowing ? 'A Seguir' : 'Seguir';
+        followBtn.classList.add(isFollowing ? 'following' : 'follow');
+        followBtn.onclick = () => toggleFollow(targetUserId, followBtn);
+    } else {
+        followBtn.classList.add('hidden'); // Esconde se não estiver logado
+    }
 
     // 1. Atualizar informações do cabeçalho
-    document.getElementById('profile-username').textContent = `@${CURRENT_USER_DATA.username}`;
-    document.getElementById('profile-pic').src = `https://i.pravatar.cc/150?img=${CURRENT_USER_DATA.uid.slice(-1)}`;
-    document.getElementById('profile-stats').textContent = `0 Seguidores • 0 Seguindo • 0 Likes`; // Stats estáticos por enquanto
-    
-    // 2. Buscar vídeos do usuário logado
-    userVideosGrid.innerHTML = '<p style="padding: 20px; text-align: center;">A carregar vídeos...</p>';
-
-    db.collection('videos')
-        .where('userId', '==', CURRENT_USER_DATA.uid)
-        .orderBy('timestamp', 'desc')
-        .get()
-        .then((snapshot) => {
-            userVideosGrid.innerHTML = '';
-            if (snapshot.empty) {
-                userVideosGrid.innerHTML = '<p style="padding: 20px; text-align: center;">Nenhum vídeo publicado ainda.</p>';
-                return;
-            }
-
-            snapshot.forEach(doc => {
-                const video = doc.data();
-                const thumbnail = document.createElement('img');
-                thumbnail.className = 'video-thumbnail';
-                
-                // Transforma a URL do vídeo para uma miniatura
-                const thumbnailUrl = video.videoUrl.replace('/upload/', '/upload/w_300,h_533,c_fill,e_preview:duration_1/');
-                
-                thumbnail.src = thumbnailUrl;
-                userVideosGrid.appendChild(thumbnail);
-            });
-        })
-        .catch(console.error);
-};
-
-const navigateTo = (viewId) => {
-    feedView.classList.add('hidden');
-    profileView.classList.add('hidden');
-
-    document.querySelectorAll('.nav-item').forEach(item => item.classList.remove('active'));
-
-    if (viewId === 'feed') {
-        feedView.classList.remove('hidden');
-        navFeed.classList.add('active');
-        // Toca o vídeo ao voltar para o feed
-        setTimeout(() => handleScroll(), 100); 
-    } else if (viewId === 'profile') {
-        profileView.classList.remove('hidden');
-        navProfile.classList.add('active');
-        renderProfilePage(); // Carrega os dados do perfil
-    }
-};
-
-// Listeners de Navegação
-navFeed.addEventListener('click', (e) => {
-    e.preventDefault();
-    navigateTo('feed');
-});
-
-navProfile.addEventListener('click', (e) => {
-    e.preventDefault();
-    navigateTo('profile');
-});
-
-// Listener de Rolagem Principal (Usado para Play/Pause automático)
-document.querySelector('.feed-container').addEventListener('scroll', handleScroll);
-    
+    document.getElementById('profile-username').textContent = `@${userData.username}`;
+    document.getElementById('profile-pic').src = `https://i.pravatar.cc/150?img=${targetUserId.slice(-1)}`;
+    document.getElementById('profile-stats').textContent
