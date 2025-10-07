@@ -1,91 +1,176 @@
-<!DOCTYPE html>
-<html lang="pt-BR">
+<!doctype html>
+<html lang="pt-PT">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>VideoT - Seu App de Vídeos</title>
-    <style>
-        /* Estilo Base */
-        body, html { margin: 0; padding: 0; height: 100%; overflow: hidden; font-family: sans-serif; }
-        .app-container { display: flex; flex-direction: column; height: 100vh; max-width: 500px; margin: 0 auto; background: #000; color: white; position: relative; }
-
-        /* Feed de Vídeos (Ocupa a maior parte da tela) */
-        .video-feed { flex-grow: 1; overflow-y: scroll; scroll-snap-type: y mandatory; }
-        .video-item { height: 100vh; scroll-snap-align: start; position: relative; }
-        .video-item video { width: 100%; height: 100%; object-fit: cover; }
-
-        /* Barras de Navegação Fixas */
-        .top-nav, .bottom-nav { background: rgba(0, 0, 0, 0.3); padding: 10px 0; display: flex; justify-content: space-around; position: absolute; width: 100%; max-width: 500px; z-index: 10; }
-        .top-nav { top: 0; font-size: 1.2em; font-weight: bold; }
-        .bottom-nav { bottom: 0; align-items: center; background: #000; border-top: 1px solid #333; }
-
-        /* Estilo dos Itens de Navegação */
-        .nav-item { color: white; cursor: pointer; text-align: center; }
-        .nav-center-button { font-size: 1.5em; background: #d9534f; border-radius: 8px; padding: 5px 20px; font-weight: bold; }
-        .nav-center-button:hover { background: #c9302c; }
-
-        /* Overlay para Login/Upload */
-        .overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0, 0, 0, 0.95); z-index: 100; display: none; flex-direction: column; justify-content: center; align-items: center; }
-        #google-login { padding: 10px 20px; background-color: #4285F4; border: none; color: white; cursor: pointer; margin-bottom: 20px; font-size: 1.1em; }
-        .upload-controls input, .upload-controls button { margin: 5px 0; padding: 8px; width: 90%; max-width: 300px; }
-    </style>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>VideoT</title>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
+  <!-- Cloudinary Upload Widget -->
+  <script src="https://widget.cloudinary.com/v2.0/global/all.js"></script>
+  <style>
+    /* estilo mínimo */
+    body{font-family:system-ui,Segoe UI,Roboto,Helvetica,Arial; padding:16px}
+    #feed{display:flex;flex-direction:column;gap:12px;max-width:720px}
+    .card{border:1px solid #ddd;padding:8px;border-radius:8px}
+    video{max-width:100%;height:auto;border-radius:6px}
+  </style>
 </head>
 <body>
+  <h1>VideoT</h1>
+  <div id="auth">
+    <button id="btnSignIn">Entrar com Google</button>
+    <button id="btnSignOut" style="display:none">Sair</button>
+    <span id="userInfo"></span>
+  </div>
 
-    <div class="app-container">
-        
-        <div class="top-nav">
-            <span class="nav-item">Explorar</span>
-            <span class="nav-item">A Seguir</span>
-            <span class="nav-item" style="color: #d9534f;">Para Ti</span>
-            <span class="nav-item" onclick="alert('Funcionalidade de Pesquisa (Amigos/Vídeos) aqui!');">🔍</span>
-        </div>
+  <div id="actions" style="margin-top:12px; display:none">
+    <button id="btnUpload">Enviar vídeo / foto</button>
+    <button id="btnProfile">Ver perfil</button>
+  </div>
 
-        <div class="video-feed" id="videoFeed">
-            </div>
+  <h2>Feed</h2>
+  <div id="feed"></div>
 
-        <div class="bottom-nav">
-            <span class="nav-item">🏠 Início</span>
-            <span class="nav-item" onclick="showFriendsModal()">👥 Amigos</span> 
-            <span class="nav-center-button" onclick="showUploadModal()">+</span> 
-            <span class="nav-item" onclick="showMessagesModal()">✉️ C. de Entrada</span>
-            <span class="nav-item" id="profile-icon" onclick="showProfileModal()">👤 Perfil</span>
-        </div>
+<script>
+/* ====== 1) CONFIGURAÇÃO FIREBASE (usa as tuas credenciais) ====== */
+const firebaseConfig = {
+  apiKey: "PUX-API-KEY",
+  authDomain: "YOUR-PROJECT.firebaseapp.com",
+  projectId: "YOUR-PROJECT",
+  // ... resto das configs
+};
+firebase.initializeApp(firebaseConfig);
+const auth = firebase.auth();
+const db = firebase.firestore();
 
-    </div>
+/* ====== 2) AUTENTICAÇÃO GOOGLE ======
+   Usa o fluxo do Firebase Auth para web. */
+const provider = new firebase.auth.GoogleAuthProvider();
 
-    <div class="overlay" id="auth-upload-overlay">
-        <h2>Bem-vindo ao VideoT!</h2>
-        
-        <div id="auth-section">
-            <button id="google-login" onclick="signInWithGoogle()">Entrar / Cadastrar com Google</button>
-            <button id="google-logout" onclick="logoutUser()" style="display:none; background-color: #f0ad4e;">Logout</button>
-        </div>
+document.getElementById('btnSignIn').onclick = async () => {
+  try {
+    await auth.signInWithPopup(provider);
+  } catch(e){ console.error("SignIn:", e); alert("Erro ao iniciar sessão"); }
+};
 
-        <div id="upload-controls" class="upload-controls" style="margin-top: 30px;">
-            <h3>Postar Novo Vídeo</h3>
-            <input type="file" id="videoFile" accept="video/*" style="color: white;">
-            <input type="text" id="videoTitle" placeholder="Título do Vídeo" >
-            <button onclick="uploadVideo()" style="background-color: #5cb85c;">Postar no VideoT</button>
-            <p id="uploadStatus"></p>
-        </div>
-        
-        <button onclick="hideUploadModal()" style="margin-top: 20px; background: none; border: 1px solid white; color: white; padding: 8px 15px;">Fechar</button>
-    </div>
+document.getElementById('btnSignOut').onclick = () => auth.signOut();
 
-    <script type="module" src="app.js"></script> 
-    
-    <script>
-        // Funções de controle do modal (Simulação)
-        function showUploadModal() { document.getElementById('auth-upload-overlay').style.display = 'flex'; }
-        function hideUploadModal() { document.getElementById('auth-upload-overlay').style.display = 'none'; }
-        
-        // placeholders para as outras telas
-        function showFriendsModal() { alert('Acessando Amigos: Pesquisa e gerenciamento de pedidos.'); }
-        function showMessagesModal() { alert('Acessando Mensagens Diretas: Chats em tempo real.'); }
-        function showProfileModal() { alert('Acessando Perfil: Seu perfil, seus vídeos.'); }
-    </script>
+auth.onAuthStateChanged(async user => {
+  const uiUser = document.getElementById('userInfo');
+  const actions = document.getElementById('actions');
+  if(user){
+    uiUser.textContent = `${user.displayName} (${user.email})`;
+    document.getElementById('btnSignIn').style.display = 'none';
+    document.getElementById('btnSignOut').style.display = '';
+    actions.style.display = '';
+    // Garanta que exista documento do perfil no Firestore
+    const udoc = db.collection('users').doc(user.uid);
+    const snap = await udoc.get();
+    if(!snap.exists){
+      await udoc.set({
+        displayName: user.displayName || "",
+        email: user.email,
+        photoURL: user.photoURL || "",
+        createdAt: firebase.firestore.FieldValue.serverTimestamp()
+      });
+    }
+    loadFeed();
+  } else {
+    uiUser.textContent = '';
+    document.getElementById('btnSignIn').style.display = '';
+    document.getElementById('btnSignOut').style.display = 'none';
+    actions.style.display = 'none';
+    loadFeed(); // feed público
+  }
+});
 
+/* ====== 3) CLOUDINARY UPLOAD WIDGET ======
+   Duas opções:
+   - Unsigned (simples, mas menos seguro) -> usar preset unsigned.
+   - Signed (recomendado): widget recebe assinatura gerada pelo teu backend.
+   Abaixo mostramos o flow com o Widget + chamada a endpoint /cloudinary-sign para obter assinatura. */
+
+const cloudName = "YOUR_CLOUD_NAME"; // substitui
+const uploadPreset = "YOUR_UNSIGNED_PRESET"; // só se escolher unsigned
+
+document.getElementById('btnUpload').onclick = async () => {
+  const user = auth.currentUser;
+  if(!user){ alert("Faz login primeiro."); return; }
+
+  // Exemplo: abrir widget em modo assinado -> gerar assinatura no backend
+  // Faz pedido ao backend para obter timestamp + signature + api_key se necessário
+  let signatureData;
+  try{
+    const resp = await fetch('/cloudinary-sign', { method:'POST' });
+    if(!resp.ok) throw new Error('Falha ao obter assinatura');
+    signatureData = await resp.json(); // { signature, timestamp, api_key }
+  } catch(e){
+    console.warn("Falling back to unsigned (dev only).", e);
+    signatureData = null;
+  }
+
+  const options = {
+    cloudName,
+    sources: ["local","url","camera"],
+    multiple: false,
+    resourceType: "video", // video ou auto
+    maxFileSize: 200000000, // ~200MB
+    // Se tiveres assinatura, passa-a:
+    uploadSignature: signatureData ? signatureData.signature : undefined,
+    uploadSignatureTimestamp: signatureData ? signatureData.timestamp : undefined,
+    uploadSignatureKey: signatureData ? signatureData.api_key : undefined,
+    // se usares unsigned, podes passar uploadPreset
+    uploadPreset: signatureData ? undefined : uploadPreset
+  };
+
+  const widget = window.cloudinary.openUploadWidget(options,
+    async (error, result) => {
+      if(error) return console.error("Upload Widget error:", error);
+      if(result && result.event === "success"){
+        const info = result.info; // object com secure_url, public_id, resource_type, etc
+        console.log("Uploaded:", info);
+        // Guarda metadados no Firestore
+        await db.collection('videos').add({
+          ownerId: user.uid,
+          ownerName: user.displayName || null,
+          cloudinaryPublicId: info.public_id,
+          url: info.secure_url,
+          resource_type: info.resource_type,
+          format: info.format,
+          createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+          likes: 0,
+          description: ""
+        });
+        loadFeed(); // actualizar feed
+      }
+  });
+
+  // abrir widget
+  // (se preferires usar createUploadWidget, consulta docs Cloudinary)
+};
+
+/* ====== 4) FEED SIMPLES: puxa últimos vídeos da coleção 'videos' ====== */
+async function loadFeed(){
+  const feed = document.getElementById('feed');
+  feed.innerHTML = '<div class="card">A carregar...</div>';
+  const snap = await db.collection('videos').orderBy('createdAt','desc').limit(20).get();
+  if(snap.empty){ feed.innerHTML = '<div class="card">Ainda sem vídeos</div>'; return; }
+  feed.innerHTML = '';
+  snap.forEach(doc => {
+    const d = doc.data();
+    const el = document.createElement('div');
+    el.className = 'card';
+    // usa <video> para vídeos; se for imagem podes usar <img>
+    el.innerHTML = `
+      <div><strong>${d.ownerName||'Utilizador'}</strong></div>
+      ${d.resource_type === 'video' ? `<video controls src="${d.url}"></video>` : `<img src="${d.url}" alt="media" style="max-width:100%"/>`}
+      <div>Likes: ${d.likes || 0}</div>
+    `;
+    feed.appendChild(el);
+  });
+}
+</script>
 </body>
-    </html>
-    
+</html>
