@@ -3,35 +3,89 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>VideoApp Clone - Firebase</title>
+    <title>VideoT - Seu App de Vídeos</title>
     <style>
-        body { font-family: sans-serif; display: flex; flex-direction: column; align-items: center; }
-        .upload-section, .feed-section { margin-top: 20px; padding: 20px; border: 1px solid #ccc; width: 80%; max-width: 600px; }
-        .video-item { border: 1px solid #eee; margin-bottom: 15px; padding: 10px; }
-        .video-item video { width: 100%; max-height: 400px; background: #000; }
-        h2 { color: #d9534f; }
+        /* Estilo Base */
+        body, html { margin: 0; padding: 0; height: 100%; overflow: hidden; font-family: sans-serif; }
+        .app-container { display: flex; flex-direction: column; height: 100vh; max-width: 500px; margin: 0 auto; background: #000; color: white; position: relative; }
+
+        /* Feed de Vídeos (Ocupa a maior parte da tela) */
+        .video-feed { flex-grow: 1; overflow-y: scroll; scroll-snap-type: y mandatory; }
+        .video-item { height: 100vh; scroll-snap-align: start; position: relative; }
+        .video-item video { width: 100%; height: 100%; object-fit: cover; }
+
+        /* Barras de Navegação Fixas */
+        .top-nav, .bottom-nav { background: rgba(0, 0, 0, 0.3); padding: 10px 0; display: flex; justify-content: space-around; position: absolute; width: 100%; max-width: 500px; z-index: 10; }
+        .top-nav { top: 0; font-size: 1.2em; font-weight: bold; }
+        .bottom-nav { bottom: 0; align-items: center; background: #000; border-top: 1px solid #333; }
+
+        /* Estilo dos Itens de Navegação */
+        .nav-item { color: white; cursor: pointer; text-align: center; }
+        .nav-center-button { font-size: 1.5em; background: #d9534f; border-radius: 8px; padding: 5px 20px; font-weight: bold; }
+        .nav-center-button:hover { background: #c9302c; }
+
+        /* Overlay para Login/Upload */
+        .overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0, 0, 0, 0.95); z-index: 100; display: none; flex-direction: column; justify-content: center; align-items: center; }
+        #google-login { padding: 10px 20px; background-color: #4285F4; border: none; color: white; cursor: pointer; margin-bottom: 20px; font-size: 1.1em; }
+        .upload-controls input, .upload-controls button { margin: 5px 0; padding: 8px; width: 90%; max-width: 300px; }
     </style>
 </head>
 <body>
 
-    <h1>Meu Vídeo App (TikTok Clone Simples)</h1>
-
-    <div class="upload-section">
-        <h2>1. Fazer Upload</h2>
-        <input type="file" id="videoFile" accept="video/*">
-        <input type="text" id="videoTitle" placeholder="Título do Vídeo" style="width: 100%; margin: 10px 0;">
-        <button onclick="uploadVideo()">Upload e Postar</button>
-        <p id="uploadStatus"></p>
-    </div>
-
-    <div class="feed-section">
-        <h2>2. Feed de Vídeos</h2>
-        <div id="videoFeed">
-            <p>Carregando vídeos...</p>
+    <div class="app-container">
+        
+        <div class="top-nav">
+            <span class="nav-item">Explorar</span>
+            <span class="nav-item">A Seguir</span>
+            <span class="nav-item" style="color: #d9534f;">Para Ti</span>
+            <span class="nav-item" onclick="alert('Funcionalidade de Pesquisa (Amigos/Vídeos) aqui!');">🔍</span>
         </div>
+
+        <div class="video-feed" id="videoFeed">
+            </div>
+
+        <div class="bottom-nav">
+            <span class="nav-item">🏠 Início</span>
+            <span class="nav-item" onclick="showFriendsModal()">👥 Amigos</span> 
+            <span class="nav-center-button" onclick="showUploadModal()">+</span> 
+            <span class="nav-item" onclick="showMessagesModal()">✉️ C. de Entrada</span>
+            <span class="nav-item" id="profile-icon" onclick="showProfileModal()">👤 Perfil</span>
+        </div>
+
     </div>
 
-    <script src="app.js"></script>
+    <div class="overlay" id="auth-upload-overlay">
+        <h2>Bem-vindo ao VideoT!</h2>
+        
+        <div id="auth-section">
+            <button id="google-login" onclick="signInWithGoogle()">Entrar / Cadastrar com Google</button>
+            <button id="google-logout" onclick="logoutUser()" style="display:none; background-color: #f0ad4e;">Logout</button>
+        </div>
+
+        <div id="upload-controls" class="upload-controls" style="margin-top: 30px;">
+            <h3>Postar Novo Vídeo</h3>
+            <input type="file" id="videoFile" accept="video/*" style="color: white;">
+            <input type="text" id="videoTitle" placeholder="Título do Vídeo" >
+            <button onclick="uploadVideo()" style="background-color: #5cb85c;">Postar no VideoT</button>
+            <p id="uploadStatus"></p>
+        </div>
+        
+        <button onclick="hideUploadModal()" style="margin-top: 20px; background: none; border: 1px solid white; color: white; padding: 8px 15px;">Fechar</button>
+    </div>
+
+    <script type="module" src="app.js"></script> 
+    
+    <script>
+        // Funções de controle do modal (Simulação)
+        function showUploadModal() { document.getElementById('auth-upload-overlay').style.display = 'flex'; }
+        function hideUploadModal() { document.getElementById('auth-upload-overlay').style.display = 'none'; }
+        
+        // placeholders para as outras telas
+        function showFriendsModal() { alert('Acessando Amigos: Pesquisa e gerenciamento de pedidos.'); }
+        function showMessagesModal() { alert('Acessando Mensagens Diretas: Chats em tempo real.'); }
+        function showProfileModal() { alert('Acessando Perfil: Seu perfil, seus vídeos.'); }
+    </script>
 
 </body>
-</html>
+    </html>
+    
