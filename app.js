@@ -15,7 +15,7 @@ const firebaseConfig = {
 // 🚨 2. SUAS CREDENCIAIS CLOUDINARY
 const CLOUDINARY_CLOUD_NAME = 'dya1jd0mx'; 
 const CLOUDINARY_UPLOAD_PRESET = 'videot_unsigned_preset'; 
-const CLOUDINARY_URL = `https://api.cloudinary.com/v1_1/${CLOUDINARY_CLOUD_NAME}/video/upload`;
+const CLOUDINARY_URL = `CLOUDINARY_URL=cloudinary://<your_api_key>:<your_api_secret>@dya1jd0mx`;
 
 const app = firebase.initializeApp(firebaseConfig);
 const auth = app.auth();
