@@ -34,10 +34,9 @@
     
     <script>
         // ======================================================================
-        // CONFIGURAÇÃO E LÓGICA DE AUTENTICAÇÃO
+        // CONFIGURAÇÃO E LÓGICA DE AUTENTICAÇÃO (Ecrã de Login)
         // ======================================================================
 
-        // --- 🔥 FIREBASE ---
         const firebaseConfig = {
             apiKey: "AIzaSyBI_4n8aBT9ZPiLy8cwgiQDtD0_CYSKk4E",
             authDomain: "videot-2fcec.firebaseapp.com",
@@ -60,7 +59,6 @@
         const loginGoogleBtn = document.getElementById('login-google-btn');
         const authStatus = document.getElementById('auth-status');
 
-        // Função para garantir que o utilizador tem um perfil no Firestore
         const saveOrUpdateUser = async (user) => {
             const username = user.displayName ? user.displayName.split(' ')[0] : user.email.split('@')[0];
 
@@ -77,10 +75,9 @@
             }
         };
 
-        // Redireciona se o utilizador já estiver logado (Check imediato)
+        // CORREÇÃO: Redireciona imediatamente se já estiver logado.
         auth.onAuthStateChanged((user) => {
             if (user) {
-                // REDIRECIONAMENTO CRUCIAL: Se logado, vai para a aplicação principal
                 window.location.href = 'index.html';
             }
         });
@@ -90,7 +87,6 @@
             try {
                 const result = await auth.signInWithPopup(googleProvider);
                 await saveOrUpdateUser(result.user);
-                authStatus.textContent = "Sessão iniciada com sucesso!";
                 // O onAuthStateChanged tratará do redirecionamento
             } catch (error) {
                 authStatus.textContent = `Erro no login com Google: ${error.message}`;
@@ -111,11 +107,9 @@
                     authStatus.textContent = "A criar conta...";
                     const userCredential = await auth.createUserWithEmailAndPassword(email, password);
                     await saveOrUpdateUser(userCredential.user);
-                    authStatus.textContent = "Conta criada e sessão iniciada!";
                 } else {
                     authStatus.textContent = "A iniciar sessão...";
                     await auth.signInWithEmailAndPassword(email, password);
-                    authStatus.textContent = "Sessão iniciada com sucesso!";
                 }
                 // O onAuthStateChanged tratará do redirecionamento
             } catch (error) {
