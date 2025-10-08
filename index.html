@@ -3,48 +3,20 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>VideoT - Onde os Vídeos Explodem</title>
+    <title>VideoT - Login</title>
     <link rel="stylesheet" href="style.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
     
     <script src="https://www.gstatic.com/firebasejs/9.6.10/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.6.10/firebase-auth-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.6.10/firebase-firestore-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/9.6.10/firebase-analytics-compat.js"></script>
 </head>
-<body>
+<body class="login-body">
 
-    <div class="main-container">
-
-        <header class="feed-header">
-            <button class="feed-filter-btn active" data-filter="for-you" id="filter-foryou">Para Você</button>
-            <button class="feed-filter-btn" data-filter="following" id="filter-following">Seguindo</button>
-        </header>
-
-        <div class="feed-container" id="feed-view">
-            </div>
-
-        <div class="profile-view hidden" id="profile-view">
-            <div class="profile-header">
-                <img id="profile-pic" src="https://i.pravatar.cc/150?img=1" alt="Foto de Perfil" class="profile-pic-main">
-                <h2 id="profile-username">@NomeDoUsuario</h2>
-                <p id="profile-stats">0 Seguidores • 0 Seguindo • 0 Likes</p>
-                <button id="follow-toggle-btn" class="hidden">Seguir</button>
-            </div>
-            <div class="profile-tabs">
-                <button class="tab-btn active" data-tab="videos">Vídeos</button>
-                <button class="tab-btn" data-tab="liked">Gostos</button>
-            </div>
-            <div class="video-grid" id="user-videos-grid"></div>
-        </div>
-
-        <div class="profile-view hidden" id="inbox-view">
-            </div>
-    </div>
-    <div id="login-modal" class="login-modal hidden">
+    <div class="login-modal-full">
         <div class="login-box">
             <h2>Bem-vindo ao VideoT</h2>
-            <p class="login-subtext">Faça login ou registre-se para começar.</p>
+            <p class="login-subtext">Faça login ou registre-se para começar a ver vídeos.</p>
             
             <button id="login-google-btn" class="social-login-btn google-btn">
                 <i class="fab fa-google"></i> Continuar com Google
@@ -54,32 +26,107 @@
 
             <input type="email" id="email" placeholder="Email">
             <input type="password" id="password" placeholder="Senha">
-            <button id="login-btn">Login</button>
-            <button id="register-btn">Cadastrar</button>
-            <p id="auth-status"></p>
+            <button id="login-btn">Entrar</button>
+            <button id="register-btn">Criar Conta</button>
+            <p id="auth-status" class="auth-message"></p>
         </div>
     </div>
     
-    <div class="upload-modal hidden" id="upload-modal">
-        <div class="upload-box">
-            <span class="close-modal" id="close-upload-modal">&times;</span>
-            <h2>Postar Vídeo</h2>
-            <input type="file" id="video-file-input" accept="video/mp4,video/quicktime">
-            <input type="text" id="video-description-input" placeholder="Descrição do vídeo e hashtags">
-            <button id="upload-video-btn">POSTAR</button>
-            <p id="upload-status"></p>
-        </div>
-    </div>
+    <script>
+        // ======================================================================
+        // CONFIGURAÇÃO E LÓGICA DE AUTENTICAÇÃO
+        // ======================================================================
 
+        // --- 🔥 FIREBASE ---
+        const firebaseConfig = {
+            apiKey: "AIzaSyBI_4n8aBT9ZPiLy8cwgiQDtD0_CYSKk4E",
+            authDomain: "videot-2fcec.firebaseapp.com",
+            projectId: "videot-2fcec",
+            storageBucket: "videot-2fcec.firebasestorage.app",
+            messagingSenderId: "583396995831",
+            appId: "1:583396995831:web:6182575e28ea628cc259f2"
+        };
 
-    <nav class="bottom-nav">
-        <a href="#" class="nav-item active" id="nav-feed"><i class="fas fa-home"></i><span>Início</span></a>
-        <a href="#" class="nav-item"><i class="fas fa-search"></i><span>Descobrir</span></a>
-        <button class="upload-btn" id="open-upload-modal"><i class="fas fa-plus"></i></button>
-        <a href="#" class="nav-item" id="nav-inbox"><i class="fas fa-inbox"></i><span>Caixa de Entrada</span></a>
-        <a href="#" class="nav-item" id="nav-profile"><i class="fas fa-user"></i><span>Perfil</span></a>
-    </nav>
+        const app = firebase.initializeApp(firebaseConfig);
+        const auth = app.auth();
+        const db = app.firestore();
+        const googleProvider = new firebase.auth.GoogleAuthProvider();
 
-    <script src="app.js" type="module" defer></script>
+        // Elementos DOM
+        const emailInput = document.getElementById('email');
+        const passwordInput = document.getElementById('password');
+        const loginBtn = document.getElementById('login-btn');
+        const registerBtn = document.getElementById('register-btn');
+        const loginGoogleBtn = document.getElementById('login-google-btn');
+        const authStatus = document.getElementById('auth-status');
+
+        // Função para garantir que o utilizador tem um perfil no Firestore
+        const saveOrUpdateUser = async (user) => {
+            const username = user.displayName ? user.displayName.split(' ')[0] : user.email.split('@')[0];
+
+            const userRef = db.collection('users').doc(user.uid);
+            const doc = await userRef.get();
+
+            if (!doc.exists) {
+                await userRef.set({
+                    email: user.email,
+                    username: username,
+                    profilePic: user.photoURL || `https://i.pravatar.cc/150?img=${user.uid.slice(-1)}`,
+                    createdAt: firebase.firestore.FieldValue.serverTimestamp()
+                });
+            }
+        };
+
+        // Redireciona se o utilizador já estiver logado (Check imediato)
+        auth.onAuthStateChanged((user) => {
+            if (user) {
+                // REDIRECIONAMENTO CRUCIAL: Se logado, vai para a aplicação principal
+                window.location.href = 'index.html';
+            }
+        });
+
+        const handleGoogleLogin = async () => {
+            authStatus.textContent = "A iniciar sessão com Google...";
+            try {
+                const result = await auth.signInWithPopup(googleProvider);
+                await saveOrUpdateUser(result.user);
+                authStatus.textContent = "Sessão iniciada com sucesso!";
+                // O onAuthStateChanged tratará do redirecionamento
+            } catch (error) {
+                authStatus.textContent = `Erro no login com Google: ${error.message}`;
+            }
+        };
+
+        const handleEmailPasswordLogin = async (isRegister) => {
+            const email = emailInput.value;
+            const password = passwordInput.value;
+            
+            if (!email || password.length < 6) {
+                authStatus.textContent = "Email ou senha inválidos (mín. 6 caracteres).";
+                return;
+            }
+
+            try {
+                if (isRegister) {
+                    authStatus.textContent = "A criar conta...";
+                    const userCredential = await auth.createUserWithEmailAndPassword(email, password);
+                    await saveOrUpdateUser(userCredential.user);
+                    authStatus.textContent = "Conta criada e sessão iniciada!";
+                } else {
+                    authStatus.textContent = "A iniciar sessão...";
+                    await auth.signInWithEmailAndPassword(email, password);
+                    authStatus.textContent = "Sessão iniciada com sucesso!";
+                }
+                // O onAuthStateChanged tratará do redirecionamento
+            } catch (error) {
+                authStatus.textContent = `Erro: ${error.message}`;
+            }
+        };
+
+        // Listeners
+        loginGoogleBtn.addEventListener('click', handleGoogleLogin);
+        loginBtn.addEventListener('click', () => handleEmailPasswordLogin(false));
+        registerBtn.addEventListener('click', () => handleEmailPasswordLogin(true));
+    </script>
 </body>
 </html>
