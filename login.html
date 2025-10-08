@@ -1,126 +1,125 @@
 <!DOCTYPE html>
 <html lang="pt">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Login - VideoT</title>
-    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-auth.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-firestore.js"></script>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>VideoT - Login</title>
+  <link rel="stylesheet" href="style.css" />
+  <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-auth.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-firestore.js"></script>
 </head>
 <body>
-    <h1>Login / Registo</h1>
-    <input id="email" type="email" placeholder="Email">
-    <input id="password" type="password" placeholder="Palavra-passe">
-    <button id="login-btn" type="button">Iniciar sessão</button>
-    <button id="register-btn" type="button">Registar</button>
-    <button id="login-google-btn" type="button">Entrar com Google</button>
+  <div id="login-container">
+    <h1>🎥 VideoT</h1>
+    <h3>Entrar ou criar conta</h3>
+
+    <input id="email" type="email" placeholder="Email" />
+    <input id="password" type="password" placeholder="Palavra-passe" />
+
+    <button id="login-btn">Entrar</button>
+    <button id="register-btn">Registar</button>
+    <button id="google-btn">Entrar com Google</button>
+
     <p id="auth-status"></p>
+  </div>
 
-    <script>
-        // ==========================================================
-        // 🔧 CONFIGURAÇÃO FIREBASE
-        // ==========================================================
-        const firebaseConfig = {
-            apiKey: "AIzaSyBI_4n8aBT9ZPiLy8cwgiQDtD0_CYSKk4E",
-            authDomain: "videot-2fcec.firebaseapp.com",
-            projectId: "videot-2fcec",
-            storageBucket: "videot-2fcec.appspot.com",
-            messagingSenderId: "583396995831",
-            appId: "1:583396995831:web:6182575e28ea628cc259f2"
-        };
+  <script>
+    // ======================================================
+    // 🔧 CONFIGURAÇÃO FIREBASE
+    // ======================================================
+    const firebaseConfig = {
+      apiKey: "AIzaSyBI_4n8aBT9ZPiLy8cwgiQDtD0_CYSKk4E",
+      authDomain: "videot-2fcec.firebaseapp.com",
+      projectId: "videot-2fcec",
+      storageBucket: "videot-2fcec.appspot.com",
+      messagingSenderId: "583396995831",
+      appId: "1:583396995831:web:6182575e28ea628cc259f2",
+    };
 
-        const app = firebase.initializeApp(firebaseConfig);
-        const auth = app.auth();
-        const db = app.firestore();
-        const googleProvider = new firebase.auth.GoogleAuthProvider();
+    const app = firebase.initializeApp(firebaseConfig);
+    const auth = app.auth();
+    const db = app.firestore();
+    const googleProvider = new firebase.auth.GoogleAuthProvider();
 
-        const emailInput = document.getElementById('email');
-        const passwordInput = document.getElementById('password');
-        const loginBtn = document.getElementById('login-btn');
-        const registerBtn = document.getElementById('register-btn');
-        const loginGoogleBtn = document.getElementById('login-google-btn');
-        const authStatus = document.getElementById('auth-status');
+    const emailInput = document.getElementById("email");
+    const passwordInput = document.getElementById("password");
+    const loginBtn = document.getElementById("login-btn");
+    const registerBtn = document.getElementById("register-btn");
+    const googleBtn = document.getElementById("google-btn");
+    const authStatus = document.getElementById("auth-status");
 
-        // ==========================================================
-        // 🔒 PERSISTÊNCIA DE SESSÃO
-        // ==========================================================
-        auth.setPersistence(firebase.auth.Auth.Persistence.LOCAL).catch(e => console.warn("Aviso persistência:", e));
+    // ======================================================
+    // 💾 GUARDAR DADOS DO UTILIZADOR NO FIRESTORE
+    // ======================================================
+    async function saveUserData(user) {
+      const username = user.displayName
+        ? user.displayName.split(" ")[0]
+        : user.email.split("@")[0];
 
-        // ==========================================================
-        // 💾 GUARDAR OU ATUALIZAR DADOS DO UTILIZADOR
-        // ==========================================================
-        async function saveOrUpdateUser(user) {
-            const username = user.displayName ? user.displayName.split(' ')[0] : user.email.split('@')[0];
-            const userRef = db.collection('users').doc(user.uid);
-            const doc = await userRef.get();
-            if (!doc.exists) {
-                await userRef.set({
-                    email: user.email,
-                    username: username,
-                    profilePic: user.photoURL || `https://i.pravatar.cc/150?u=${user.uid}`,
-                    createdAt: firebase.firestore.FieldValue.serverTimestamp()
-                });
-            }
-        }
-
-        // ==========================================================
-        // 🧭 REDIRECIONAMENTO AUTOMÁTICO SE JÁ ESTIVER AUTENTICADO
-        // ==========================================================
-        auth.onAuthStateChanged(user => {
-            console.log("onAuthStateChanged:", user);
-            if (user) {
-                window.location.replace("index.html");
-            }
+      const userRef = db.collection("users").doc(user.uid);
+      const doc = await userRef.get();
+      if (!doc.exists) {
+        await userRef.set({
+          email: user.email,
+          username,
+          profilePic:
+            user.photoURL || `https://i.pravatar.cc/150?u=${user.uid}`,
+          createdAt: firebase.firestore.FieldValue.serverTimestamp(),
         });
+      }
+    }
 
-        // ==========================================================
-        // 🔹 LOGIN COM GOOGLE
-        // ==========================================================
-        async function handleGoogleLogin() {
-            authStatus.textContent = "A iniciar sessão com Google...";
-            try {
-                const result = await auth.signInWithPopup(googleProvider);
-                await saveOrUpdateUser(result.user);
-                window.location.replace("index.html");
-            } catch (error) {
-                console.error("Erro Google Login:", error);
-                authStatus.textContent = `Erro: ${error.message}`;
-            }
-        }
+    // ======================================================
+    // 🔒 LOGIN E REGISTO
+    // ======================================================
+    loginBtn.addEventListener("click", async () => {
+      const email = emailInput.value.trim();
+      const password = passwordInput.value.trim();
+      if (!email || password.length < 6) {
+        authStatus.textContent = "⚠️ Email ou palavra-passe inválidos.";
+        return;
+      }
+      try {
+        await auth.signInWithEmailAndPassword(email, password);
+      } catch (error) {
+        authStatus.textContent = "❌ " + error.message;
+      }
+    });
 
-        // ==========================================================
-        // 🔹 LOGIN OU REGISTO COM EMAIL
-        // ==========================================================
-        async function handleEmailPasswordLogin(isRegister) {
-            const email = emailInput.value.trim();
-            const password = passwordInput.value;
-            if (!email || password.length < 6) {
-                authStatus.textContent = "Email ou palavra-passe inválidos (mínimo 6 caracteres).";
-                return;
-            }
-            try {
-                if (isRegister) {
-                    authStatus.textContent = "A criar conta...";
-                    const userCredential = await auth.createUserWithEmailAndPassword(email, password);
-                    await saveOrUpdateUser(userCredential.user);
-                } else {
-                    authStatus.textContent = "A iniciar sessão...";
-                    await auth.signInWithEmailAndPassword(email, password);
-                }
-                window.location.replace("index.html");
-            } catch (error) {
-                console.error("Erro auth:", error);
-                authStatus.textContent = `Erro: ${error.message}`;
-            }
-        }
+    registerBtn.addEventListener("click", async () => {
+      const email = emailInput.value.trim();
+      const password = passwordInput.value.trim();
+      if (!email || password.length < 6) {
+        authStatus.textContent = "⚠️ Email ou palavra-passe inválidos.";
+        return;
+      }
+      try {
+        const result = await auth.createUserWithEmailAndPassword(
+          email,
+          password
+        );
+        await saveUserData(result.user);
+      } catch (error) {
+        authStatus.textContent = "❌ " + error.message;
+      }
+    });
 
-        // ==========================================================
-        // 🔘 EVENT LISTENERS
-        // ==========================================================
-        loginGoogleBtn.addEventListener("click", handleGoogleLogin);
-        loginBtn.addEventListener("click", () => handleEmailPasswordLogin(false));
-        registerBtn.addEventListener("click", () => handleEmailPasswordLogin(true));
-    </script>
+    googleBtn.addEventListener("click", async () => {
+      try {
+        const result = await auth.signInWithPopup(googleProvider);
+        await saveUserData(result.user);
+      } catch (error) {
+        authStatus.textContent = "❌ " + error.message;
+      }
+    });
+
+    // ======================================================
+    // 🧭 REDIRECIONAR SE ESTIVER LOGADO
+    // ======================================================
+    auth.onAuthStateChanged((user) => {
+      if (user) window.location.href = "index.html";
+    });
+  </script>
 </body>
 </html>
