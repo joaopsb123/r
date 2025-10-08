@@ -20,14 +20,18 @@ const CLOUDINARY_URL = `https://api.cloudinary.com/v1_1/${CLOUDINARY_CLOUD_NAME}
 const app = firebase.initializeApp(firebaseConfig);
 const auth = app.auth();
 const db = app.firestore();
-const googleProvider = new firebase.auth.GoogleAuthProvider(); // Novo provider para Google!
 
-// Elementos DOM
+// ======================================================================
+// 1. VARIÁVEIS DE ESTADO E ELEMENTOS DOM
+// ======================================================================
+
+const appContent = document.getElementById('app-content');
+const bottomNav = document.getElementById('bottom-nav');
+const loadingScreen = document.getElementById('loading-screen');
 const feedContainer = document.querySelector('.feed-container');
 const feedView = document.getElementById('feed-view');
 const profileView = document.getElementById('profile-view');
 const inboxView = document.getElementById('inbox-view');
-const loginModal = document.getElementById('login-modal');
 const uploadModal = document.getElementById('upload-modal');
 const uploadStatus = document.getElementById('upload-status');
 const openUploadModalBtn = document.getElementById('open-upload-modal');
@@ -39,10 +43,9 @@ const navFeed = document.getElementById('nav-feed');
 const navProfile = document.getElementById('nav-profile');
 const navInbox = document.getElementById('nav-inbox');
 const userVideosGrid = document.getElementById('user-videos-grid');
-const authStatus = document.getElementById('auth-status');
 const filterForYou = document.getElementById('filter-foryou');
 const filterFollowing = document.getElementById('filter-following');
-const loginGoogleBtn = document.getElementById('login-google-btn'); // Novo botão!
+const logoutBtn = document.getElementById('logout-btn');
 
 let CURRENT_USER_DATA = null;
 let currentVideoPlayer = null; 
@@ -51,35 +54,8 @@ let currentFeedFilter = 'for-you';
 
 
 // ======================================================================
-// 1. AUTENTICAÇÃO E PERFIL (COM LOGIN GOOGLE)
+// 2. AUTENTICAÇÃO E CONTROLE DE SESSÃO
 // ======================================================================
-
-const saveOrUpdateUser = async (user) => {
-    // Tenta usar o display name ou o nome do email como username
-    const username = user.displayName ? user.displayName.split(' ')[0] : user.email.split('@')[0];
-
-    const userRef = db.collection('users').doc(user.uid);
-    const doc = await userRef.get();
-
-    if (!doc.exists) {
-        await userRef.set({
-            email: user.email,
-            username: username,
-            profilePic: user.photoURL || `https://i.pravatar.cc/150?img=${user.uid.slice(-1)}`,
-            createdAt: firebase.firestore.FieldValue.serverTimestamp()
-        });
-    }
-};
-
-const handleGoogleLogin = async () => {
-    try {
-        const result = await auth.signInWithPopup(googleProvider);
-        await saveOrUpdateUser(result.user);
-    } catch (error) {
-        authStatus.textContent = `Erro no login com Google: ${error.message}`;
-        console.error("Erro Google Auth:", error);
-    }
-};
 
 const fetchUserData = async (uid) => {
     try {
@@ -96,7 +72,40 @@ const fetchUserData = async (uid) => {
     }
 };
 
-// ... (Lógica de toggleFollow é mantida) ...
+// Lógica de Redirecionamento e Controle de Visibilidade
+auth.onAuthStateChanged(async (user) => {
+    loadingScreen.classList.add('hidden'); // Esconde o spinner de qualquer forma
+    
+    if (user) {
+        // Se logado, carrega os dados e mostra a aplicação
+        CURRENT_USER_DATA = await fetchUserData(user.uid);
+        if (CURRENT_USER_DATA) {
+            appContent.classList.remove('hidden');
+            bottomNav.classList.remove('hidden');
+            navigateTo('feed'); // Inicia no feed
+        } else {
+            // Se o perfil do Firestore falhar, sai e redireciona
+            auth.signOut();
+        }
+    } else {
+        // Se não logado, redireciona para a página de login
+        window.location.href = 'login.html';
+    }
+});
+
+// Listener do Botão Terminar Sessão (no Perfil)
+if (logoutBtn) {
+    logoutBtn.addEventListener('click', async () => {
+        try {
+            await auth.signOut();
+            // O onAuthStateChanged tratará do redirecionamento para 'login.html'
+        } catch (error) {
+            console.error("Erro ao terminar sessão:", error);
+            alert("Erro ao terminar sessão. Tente novamente.");
+        }
+    });
+}
+
 const toggleFollow = async (targetUserId, followBtn) => {
     if (!CURRENT_USER_DATA || CURRENT_USER_DATA.uid === targetUserId) return;
 
@@ -128,59 +137,8 @@ const toggleFollow = async (targetUserId, followBtn) => {
 };
 
 
-auth.onAuthStateChanged(async (user) => {
-    if (user) {
-        // Garante que o usuário existe no Firestore antes de carregar o app
-        await saveOrUpdateUser(user); 
-        
-        CURRENT_USER_DATA = await fetchUserData(user.uid);
-        if (CURRENT_USER_DATA) {
-            loginModal.classList.add('hidden');
-            setupRealtimeFeed(currentFeedFilter); 
-        } else {
-            auth.signOut();
-        }
-    } else {
-        CURRENT_USER_DATA = null;
-        loginModal.classList.remove('hidden');
-        feedContainer.innerHTML = `<h2 style="color: white; text-align: center; padding-top: 50px;">Faça login para ver o feed.</h2>`;
-        setupRealtimeFeed('for-you'); // Carrega o feed público (Para Você)
-    }
-});
-
-// Listeners de Autenticação
-document.getElementById('login-btn').addEventListener('click', async () => {
-    const email = document.getElementById('email').value;
-    const password = document.getElementById('password').value;
-    try {
-        await auth.signInWithEmailAndPassword(email, password);
-    } catch (error) {
-        authStatus.textContent = `Erro: ${error.message}`;
-    }
-});
-
-document.getElementById('register-btn').addEventListener('click', async () => {
-    const email = document.getElementById('email').value;
-    const password = document.getElementById('password').value;
-    try {
-        const userCredential = await auth.createUserWithEmailAndPassword(email, password);
-        const username = email.split('@')[0];
-        await db.collection('users').doc(userCredential.user.uid).set({
-            email: email,
-            username: username,
-            createdAt: firebase.firestore.FieldValue.serverTimestamp()
-        });
-        alert(`Bem-vindo, @${username}!`);
-    } catch (error) {
-        authStatus.textContent = `Erro: ${error.message}`;
-    }
-});
-
-loginGoogleBtn.addEventListener('click', handleGoogleLogin);
-
-
 // ======================================================================
-// 2. UPLOAD DE VÍDEO (MANTIDO E FUNCIONAL)
+// 3. UPLOAD DE VÍDEO
 // ======================================================================
 
 const uploadVideoToCloudinary = async (file) => {
@@ -255,8 +213,7 @@ openUploadModalBtn.addEventListener('click', () => {
         uploadModal.classList.remove('hidden');
         uploadStatus.textContent = '';
     } else {
-        alert("Inicie sessão para enviar vídeos.");
-        loginModal.classList.remove('hidden');
+        alert("Erro de autenticação. Tente recarregar a página.");
     }
 });
 closeUploadModalBtn.addEventListener('click', () => {
@@ -265,20 +222,43 @@ closeUploadModalBtn.addEventListener('click', () => {
 
 
 // ======================================================================
-// 3. FEED E LÓGICA DE INTERAÇÃO (BOTÕES CORRIGIDOS)
+// 4. FEED E LÓGICA DE INTERAÇÃO (CORREÇÃO DE BOTÕES)
 // ======================================================================
 
-// ... (handleLike e handleComment mantidos) ...
 const handleLike = async (videoId, likeBtnElement) => {
-    if (!CURRENT_USER_DATA) { alert("Faça login para dar 'gosto'!"); return; }
-    // Lógica do Like
-    // ...
+    if (!CURRENT_USER_DATA) { return; } 
+    const userId = CURRENT_USER_DATA.uid;
+    const videoRef = db.collection('videos').doc(videoId);
+    const likeRef = videoRef.collection('likes').doc(userId);
+    
+    try {
+        const likeDoc = await likeRef.get();
+        if (likeDoc.exists) {
+            await likeRef.delete();
+            await videoRef.update({ likesCount: firebase.firestore.FieldValue.increment(-1) });
+        } else {
+            await likeRef.set({ userId: userId, timestamp: firebase.firestore.FieldValue.serverTimestamp() });
+            await videoRef.update({ likesCount: firebase.firestore.FieldValue.increment(1) });
+        }
+    } catch (error) {
+        console.error("Erro ao processar Like:", error);
+    }
 };
 
 const handleComment = (videoId) => {
-    if (!CURRENT_USER_DATA) { alert("Faça login para comentar."); return; }
-    // Lógica do Comment
-    // ...
+    if (!CURRENT_USER_DATA) { return; } 
+    
+    const commentText = prompt("Adicione seu comentário:");
+    if (commentText) {
+        db.collection('videos').doc(videoId).collection('comments').add({
+            userId: CURRENT_USER_DATA.uid,
+            username: CURRENT_USER_DATA.username,
+            text: commentText,
+            timestamp: firebase.firestore.FieldValue.serverTimestamp()
+        }).then(() => {
+             db.collection('videos').doc(videoId).update({ commentsCount: firebase.firestore.FieldValue.increment(1) });
+        }).catch(console.error);
+    }
 };
 
 const createVideoCard = (video) => {
@@ -316,20 +296,103 @@ const createVideoCard = (video) => {
     return card;
 };
 
-// ... (setupRealtimeFeed e listeners de Filtro mantidos) ...
+const setupRealtimeFeed = (filter = 'for-you') => {
+    if (unsubscribeFeed) unsubscribeFeed(); 
+    
+    let query = db.collection('videos').orderBy('timestamp', 'desc');
+
+    if (filter === 'following' && CURRENT_USER_DATA && CURRENT_USER_DATA.following.length > 0) {
+        query = query.where('userId', 'in', CURRENT_USER_DATA.following);
+    } else if (filter === 'following') {
+        feedContainer.innerHTML = `<h2 style="color: white; text-align: center; padding-top: 50px;">Siga alguém para ver este feed!</h2>`;
+        setupVideoControl(); 
+        setupInteractionListeners();
+        return;
+    }
+
+    unsubscribeFeed = query.onSnapshot(async (snapshot) => {
+        feedContainer.innerHTML = '';
+        
+        const videoPromises = snapshot.docs.map(async (doc) => {
+            const videoData = { id: doc.id, ...doc.data() };
+            
+            if (CURRENT_USER_DATA) {
+                const likeDoc = await db.collection('videos').doc(videoData.id)
+                    .collection('likes').doc(CURRENT_USER_DATA.uid).get();
+                videoData.isLiked = likeDoc.exists;
+            }
+            return createVideoCard(videoData);
+        });
+
+        const videoCards = await Promise.all(videoPromises);
+        videoCards.forEach(card => feedContainer.appendChild(card));
+        
+        setupVideoControl(); 
+        setupInteractionListeners(); 
+    });
+};
+
+// Listeners de Filtro
+filterForYou.addEventListener('click', () => {
+    filterFollowing.classList.remove('active');
+    filterForYou.classList.add('active');
+    currentFeedFilter = 'for-you';
+    setupRealtimeFeed('for-you');
+});
+
+filterFollowing.addEventListener('click', () => {
+    if (!CURRENT_USER_DATA) {
+        return;
+    }
+    filterForYou.classList.remove('active');
+    filterFollowing.classList.add('active');
+    currentFeedFilter = 'following';
+    setupRealtimeFeed('following');
+});
+
 
 // ======================================================================
-// 4. CONTROLE DE VÍDEO E LISTENERS DINÂMICOS (CORRIGIDO PARA FUNCIONAR)
+// 5. CONTROLE DE VÍDEO E LISTENERS DINÂMICOS (CORREÇÃO CRUCIAL)
 // ======================================================================
 
-// ... (handleScroll mantido) ...
+const handleScroll = () => {
+    const videoCards = document.querySelectorAll('.video-card');
+    const viewportHeight = window.innerHeight;
+    let closestCard = null;
+    let minDistance = Infinity;
+
+    videoCards.forEach(card => {
+        const rect = card.getBoundingClientRect();
+        const cardCenter = rect.top + rect.height / 2; 
+        const viewportCenter = viewportHeight / 2;
+        const distance = Math.abs(cardCenter - viewportCenter);
+
+        if (distance < minDistance) {
+            minDistance = distance;
+            closestCard = card;
+        }
+    });
+
+    if (closestCard) {
+        const newVideoPlayer = closestCard.querySelector('.video-player');
+        if (newVideoPlayer && currentVideoPlayer !== newVideoPlayer) {
+            if (currentVideoPlayer) {
+                currentVideoPlayer.pause();
+                const oldIcon = currentVideoPlayer.parentElement.querySelector('.play-pause-icon');
+                if (oldIcon) oldIcon.style.opacity = '1';
+            }
+
+            newVideoPlayer.play().catch(console.error);
+            currentVideoPlayer = newVideoPlayer;
+            const newIcon = currentVideoPlayer.parentElement.querySelector('.play-pause-icon');
+            if (newIcon) newIcon.style.opacity = '0';
+        }
+    }
+};
 
 const setupVideoControl = () => {
-    // Corrigido para limpar listeners do card de forma segura
+    // CORREÇÃO: Clonagem para garantir que o listener de clique no card seja único.
     document.querySelectorAll('.video-card').forEach(card => {
-        const video = card.querySelector('.video-player');
-        const playPauseIcon = card.querySelector('.play-pause-icon');
-        
         const oldCard = card;
         const newCard = oldCard.cloneNode(true);
         oldCard.parentNode.replaceChild(newCard, oldCard);
@@ -355,7 +418,7 @@ const setupVideoControl = () => {
 
 
 const setupInteractionListeners = () => {
-    // Corrigido para garantir que os listeners sejam aplicados aos novos elementos
+    // CORREÇÃO: Clonagem para garantir que os listeners dos botões sejam únicos.
     // 1. Listeners de Likes
     document.querySelectorAll('.like-btn').forEach(btn => {
         const oldBtn = btn;
@@ -388,57 +451,73 @@ const setupInteractionListeners = () => {
         
         newUsername.addEventListener('click', function(event) {
             const targetUserId = event.currentTarget.dataset.userId;
-            
-            if (CURRENT_USER_DATA) {
-                navigateTo('profile', targetUserId); 
-            } else {
-                alert("Faça login para ver perfis.");
-            }
+            navigateTo('profile', targetUserId); 
         });
     });
 };
 
 
 // ======================================================================
-// 5. NAVEGAÇÃO, PERFIL E DMs (MANTIDO)
+// 6. NAVEGAÇÃO E PERFIL
 // ======================================================================
 
-// ... (renderProfilePage e renderInboxView mantidos e funcionais) ...
+const renderProfilePage = async (targetUserId) => {
+    if (!targetUserId) return;
+    
+    // ... (Lógica de renderização do perfil e vídeos mantida) ...
+    // Note: Esta função assume que CURRENT_USER_DATA existe.
+
+    db.collection('videos')
+        .where('userId', '==', targetUserId)
+        .orderBy('timestamp', 'desc')
+        .get()
+        .then((snapshot) => {
+            userVideosGrid.innerHTML = '';
+            if (snapshot.empty) {
+                userVideosGrid.innerHTML = '<p style="padding: 20px; text-align: center;">Nenhum vídeo publicado ainda.</p>';
+                return;
+            }
+            snapshot.forEach(doc => {
+                const video = doc.data();
+                const thumbnail = document.createElement('img');
+                thumbnail.className = 'video-thumbnail';
+                const thumbnailUrl = video.videoUrl.replace('/upload/', '/upload/w_300,h_533,c_fill,e_preview:duration_1/');
+                thumbnail.src = thumbnailUrl;
+                userVideosGrid.appendChild(thumbnail);
+            });
+        })
+        .catch(console.error);
+};
+
+const renderInboxView = () => {
+    inboxView.innerHTML = `
+        <h2 style="padding: 20px; border-bottom: 1px solid #333;">Caixa de Entrada</h2>
+        <div id="chats-list">
+            <p style="padding: 20px; color: #aaa;">Esta é a sua caixa de entrada.</p>
+            <p style="padding: 0 20px;">*Este é um sistema de DMs conceitual. </p>
+        </div>
+    `;
+};
+
 
 const navigateTo = (viewId, userIdToView = CURRENT_USER_DATA ? CURRENT_USER_DATA.uid : null) => {
+    // Esconde todas as vistas
     feedView.classList.add('hidden');
     profileView.classList.add('hidden');
     inboxView.classList.add('hidden');
     
+    // Limpa estado de navegação
     document.querySelectorAll('.bottom-nav .nav-item, .bottom-nav .upload-btn').forEach(item => item.classList.remove('active'));
     document.querySelector('.feed-header').classList.remove('hidden');
 
     const navElement = document.getElementById(`nav-${viewId}`) || document.getElementById(`open-upload-modal`);
     if (navElement) navElement.classList.add('active');
-
+    
+    // Mostra a vista correta
     if (viewId === 'feed') {
         feedView.classList.remove('hidden');
         setupRealtimeFeed(currentFeedFilter); 
     } else if (viewId === 'profile') {
-        if (!CURRENT_USER_DATA) { alert("Faça login para ver perfis."); return; }
         profileView.classList.remove('hidden');
         navProfile.classList.add('active');
-        document.querySelector('.feed-header').classList.add('hidden');
-        renderProfilePage(userIdToView || CURRENT_USER_DATA.uid);
-    } else if (viewId === 'inbox') { 
-        if (!CURRENT_USER_DATA) { alert("Faça login para ver suas mensagens."); return; }
-        inboxView.classList.remove('hidden');
-        navInbox.classList.add('active');
-        document.querySelector('.feed-header').classList.add('hidden');
-        renderInboxView(); 
-    }
-};
-
-// Listeners de Navegação
-navFeed.addEventListener('click', (e) => { e.preventDefault(); navigateTo('feed'); });
-navProfile.addEventListener('click', (e) => { e.preventDefault(); navigateTo('profile'); });
-navInbox.addEventListener('click', (e) => { e.preventDefault(); navigateTo('inbox'); });
-
-
-// Listener de Rolagem Principal (Usado para Play/Pause automático)
-document.querySelector('.feed-container').addEventListener('scroll', handleScroll);
+      
