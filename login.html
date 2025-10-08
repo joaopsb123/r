@@ -1,35 +1,132 @@
 <!DOCTYPE html>
-<html lang="pt-br">
+<html lang="pt-BR">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Login</title>
-    <script src="https://cdn.tailwindcss.com"></script>
+    <title>VideoT - Login</title>
+    <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    
+    <script src="https://www.gstatic.com/firebasejs/9.6.10/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.6.10/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.6.10/firebase-firestore-compat.js"></script>
 </head>
-<body class="bg-gray-100 flex items-center justify-center min-h-screen">
-    <div class="w-full max-w-sm p-8 bg-white rounded-lg shadow-xl">
-        <h2 class="text-2xl font-bold text-center text-gray-800 mb-6">Entre ou Crie Sua Conta</h2>
-        
-        <form id="register-form" class="space-y-4">
-            <h3 class="text-lg font-semibold text-gray-700">Criar uma Conta</h3>
-            <input id="register-email" type="email" placeholder="Email" required class="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
-            <input id="register-password" type="password" placeholder="Senha" required class="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
-            <button type="submit" class="w-full bg-blue-500 text-white font-bold py-2 px-4 rounded-lg hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-500">Registrar</button>
-        </form>
+<body class="login-body">
 
-        <hr class="my-6">
+    <div class="login-modal-full">
+        <div class="login-box">
+            <h2>Bem-vindo ao VideoT</h2>
+            <p class="login-subtext">Faça login ou registre-se para começar a ver vídeos.</p>
+            
+            <button id="login-google-btn" class="social-login-btn google-btn">
+                <i class="fab fa-google"></i> Continuar com Google
+            </button>
+            
+            <div class="divider">ou</div>
 
-        <form id="login-form" class="space-y-4">
-            <h3 class="text-lg font-semibold text-gray-700">Já Tenho Conta</h3>
-            <input id="login-email" type="email" placeholder="Email" required class="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
-            <input id="login-password" type="password" placeholder="Senha" required class="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500">
-            <button type="submit" class="w-full bg-green-500 text-white font-bold py-2 px-4 rounded-lg hover:bg-green-600 focus:outline-none focus:ring-2 focus:ring-green-500">Entrar</button>
-        </form>
+            <input type="email" id="email" placeholder="Email">
+            <input type="password" id="password" placeholder="Senha">
+            <button id="login-btn">Entrar</button>
+            <button id="register-btn">Criar Conta</button>
+            <p id="auth-status" class="auth-message"></p>
+        </div>
     </div>
     
-    <script type="module" src="https://www.gstatic.com/firebasejs/10.4.0/firebase-app.js"></script>
-    <script type="module" src="https://www.gstatic.com/firebasejs/10.4.0/firebase-firestore.js"></script>
-    <script type="module" src="https://www.gstatic.com/firebasejs/10.4.0/firebase-auth.js"></script>
-    <script type="module" src="script.js"></script>
+    <script>
+        // ======================================================================
+        // CONFIGURAÇÃO E LÓGICA DE AUTENTICAÇÃO
+        // ======================================================================
+
+        // --- 🔥 FIREBASE ---
+        const firebaseConfig = {
+            apiKey: "AIzaSyBI_4n8aBT9ZPiLy8cwgiQDtD0_CYSKk4E",
+            authDomain: "videot-2fcec.firebaseapp.com",
+            projectId: "videot-2fcec",
+            storageBucket: "videot-2fcec.firebasestorage.app",
+            messagingSenderId: "583396995831",
+            appId: "1:583396995831:web:6182575e28ea628cc259f2"
+        };
+
+        const app = firebase.initializeApp(firebaseConfig);
+        const auth = app.auth();
+        const db = app.firestore();
+        const googleProvider = new firebase.auth.GoogleAuthProvider();
+
+        // Elementos DOM
+        const emailInput = document.getElementById('email');
+        const passwordInput = document.getElementById('password');
+        const loginBtn = document.getElementById('login-btn');
+        const registerBtn = document.getElementById('register-btn');
+        const loginGoogleBtn = document.getElementById('login-google-btn');
+        const authStatus = document.getElementById('auth-status');
+
+        // Função para garantir que o utilizador tem um perfil no Firestore
+        const saveOrUpdateUser = async (user) => {
+            const username = user.displayName ? user.displayName.split(' ')[0] : user.email.split('@')[0];
+
+            const userRef = db.collection('users').doc(user.uid);
+            const doc = await userRef.get();
+
+            if (!doc.exists) {
+                await userRef.set({
+                    email: user.email,
+                    username: username,
+                    profilePic: user.photoURL || `https://i.pravatar.cc/150?img=${user.uid.slice(-1)}`,
+                    createdAt: firebase.firestore.FieldValue.serverTimestamp()
+                });
+            }
+        };
+
+        // Redireciona se o utilizador já estiver logado (Check imediato)
+        auth.onAuthStateChanged((user) => {
+            if (user) {
+                // REDIRECIONAMENTO CRUCIAL: Se logado, vai para a aplicação principal
+                window.location.href = 'index.html';
+            }
+        });
+
+        const handleGoogleLogin = async () => {
+            authStatus.textContent = "A iniciar sessão com Google...";
+            try {
+                const result = await auth.signInWithPopup(googleProvider);
+                await saveOrUpdateUser(result.user);
+                authStatus.textContent = "Sessão iniciada com sucesso!";
+                // O onAuthStateChanged tratará do redirecionamento
+            } catch (error) {
+                authStatus.textContent = `Erro no login com Google: ${error.message}`;
+            }
+        };
+
+        const handleEmailPasswordLogin = async (isRegister) => {
+            const email = emailInput.value;
+            const password = passwordInput.value;
+            
+            if (!email || password.length < 6) {
+                authStatus.textContent = "Email ou senha inválidos (mín. 6 caracteres).";
+                return;
+            }
+
+            try {
+                if (isRegister) {
+                    authStatus.textContent = "A criar conta...";
+                    const userCredential = await auth.createUserWithEmailAndPassword(email, password);
+                    await saveOrUpdateUser(userCredential.user);
+                    authStatus.textContent = "Conta criada e sessão iniciada!";
+                } else {
+                    authStatus.textContent = "A iniciar sessão...";
+                    await auth.signInWithEmailAndPassword(email, password);
+                    authStatus.textContent = "Sessão iniciada com sucesso!";
+                }
+                // O onAuthStateChanged tratará do redirecionamento
+            } catch (error) {
+                authStatus.textContent = `Erro: ${error.message}`;
+            }
+        };
+
+        // Listeners
+        loginGoogleBtn.addEventListener('click', handleGoogleLogin);
+        loginBtn.addEventListener('click', () => handleEmailPasswordLogin(false));
+        registerBtn.addEventListener('click', () => handleEmailPasswordLogin(true));
+    </script>
 </body>
 </html>
