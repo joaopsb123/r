@@ -10,17 +10,16 @@
 
 html, body {
     height: 100%;
-    font-family: Arial, sans-serif; 
+    font-family: 'Helvetica Neue', Arial, sans-serif; /* Fonte mais moderna */
     background-color: #000;
     color: white; 
-    overflow: hidden; 
+    overflow: hidden; /* Controlamos o scroll dentro de feed-container */
 }
 
 .hidden { display: none !important; }
 
-/* O Main Container ajusta o espaço para a barra de navegação inferior */
 .main-container {
-    height: calc(100vh - 60px); 
+    height: calc(100vh - 60px); /* Altura total menos a navegação inferior */
     overflow: hidden;
     position: relative;
 }
@@ -39,6 +38,7 @@ html, body {
     justify-content: center;
     align-items: center;
     background: rgba(0, 0, 0, 0.4);
+    backdrop-filter: blur(5px); /* Efeito de vidro para um toque moderno */
     z-index: 5; 
 }
 
@@ -49,13 +49,13 @@ html, body {
     font-size: 16px;
     padding: 0 15px;
     cursor: pointer;
-    font-weight: bold;
-    transition: color 0.3s;
+    font-weight: 600;
+    transition: color 0.3s, border-bottom 0.3s;
 }
 
 .feed-filter-btn.active {
     color: white;
-    border-bottom: 2px solid white; 
+    border-bottom: 3px solid white; 
     padding-bottom: 5px;
 }
 
@@ -64,11 +64,10 @@ html, body {
 /* ====================================================================== */
 
 .feed-container {
-    /* Altura total - Header (40px) */
-    height: calc(100% - 40px); 
+    height: calc(100% - 40px); /* Altura total menos o cabeçalho do filtro */
     overflow-y: scroll;
     scroll-snap-type: y mandatory; 
-    margin-top: 40px; 
+    margin-top: 40px; /* Espaço para o cabeçalho */
 }
 
 .video-card {
@@ -76,12 +75,15 @@ html, body {
     width: 100vw;
     height: 100%; 
     scroll-snap-align: start; 
+    display: flex; /* Garante que o vídeo preencha o card */
+    justify-content: center;
+    align-items: center;
 }
 
 .video-player {
     width: 100%;
     height: 100%;
-    object-fit: cover; 
+    object-fit: cover; /* Mantém a proporção e cobre a tela */
 }
 
 /* Overlay e Conteúdo */
@@ -95,65 +97,115 @@ html, body {
     flex-direction: column;
     justify-content: flex-end; 
     color: white;
-    text-shadow: 0 0 5px rgba(0, 0, 0, 0.7); 
+    padding: 20px 10px 80px 20px; /* Padding inferior para a barra de navegação */
+    background: linear-gradient(to top, rgba(0, 0, 0, 0.5) 0%, rgba(0, 0, 0, 0) 50%);
+    pointer-events: none; /* Permite cliques passarem para o card, exceto nos botões de ação */
 }
 
+/* Ícone de Play/Pause */
 .play-pause-icon {
     position: absolute;
     top: 50%;
     left: 50%;
     transform: translate(-50%, -50%);
     font-size: 80px;
-    opacity: 0; 
+    opacity: 1; 
     transition: opacity 0.3s;
-    pointer-events: none; 
+    pointer-events: none;
 }
 
+/* Conteúdo Esquerdo (Username, Descrição) */
 .video-content-left {
-    padding: 0 15px 10px 15px; 
-    display: flex;
-    align-items: flex-end;
-    background: linear-gradient(to top, rgba(0, 0, 0, 0.5), transparent);
+    pointer-events: all; /* Permite clicar no username */
+    width: calc(100% - 80px); /* Deixa espaço para os botões da direita */
 }
-.user-info h2 { font-size: 18px; margin-bottom: 5px; cursor: pointer; }
-.user-info .description { font-size: 15px; margin-bottom: 5px; }
-.music-info { font-size: 14px; opacity: 0.9; }
 
+.user-info {
+    margin-bottom: 20px;
+}
+
+.video-username {
+    font-size: 18px;
+    font-weight: bold;
+    margin-bottom: 5px;
+    cursor: pointer;
+    text-shadow: 0 0 4px rgba(0, 0, 0, 0.8);
+}
+
+.description {
+    font-size: 14px;
+    margin-bottom: 10px;
+}
+
+.music-info {
+    font-size: 12px;
+    font-weight: 600;
+}
+.music-info i {
+    margin-right: 5px;
+}
+
+
+/* Ações à Direita (Likes, Comments, Share) */
 .video-actions-right {
     position: absolute;
     right: 15px;
-    bottom: 10px; 
+    bottom: 90px; /* Acima da barra de navegação */
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+    pointer-events: all; /* Permite clicar nos botões de ação */
+}
+
+.action-button {
     display: flex;
     flex-direction: column;
     align-items: center;
-    gap: 25px; 
-}
-
-.action-button { 
-    text-align: center; 
-    cursor: pointer; 
+    cursor: pointer;
     transition: transform 0.1s;
 }
-.action-button:active {
-    transform: scale(1.1); 
-}
-.action-button i { font-size: 28px; margin-bottom: 5px; }
-.action-button span { font-size: 12px; }
 
-.profile-music-disk { margin-top: 25px; }
-.profile-pic-disk {
-    width: 50px;
-    height: 50px;
-    border-radius: 50%;
-    border: 3px solid white; 
-    object-fit: cover;
-    animation: spin 3s linear infinite; 
+.action-button:active {
+    transform: scale(0.9);
 }
-@keyframes spin {
+
+.action-button i {
+    font-size: 30px;
+    margin-bottom: 5px;
+}
+
+.action-button span {
+    font-size: 14px;
+    font-weight: bold;
+}
+
+/* Disco de Música do Perfil */
+.profile-music-disk {
+    margin-top: 10px;
+    position: relative;
+    width: 45px;
+    height: 45px;
+    border-radius: 50%;
+    background-color: #222;
+    border: 1px solid #444;
+    animation: rotate 6s linear infinite; /* Animação de rotação */
+}
+
+.profile-pic-disk {
+    width: 25px;
+    height: 25px;
+    border-radius: 50%;
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    border: 1px solid white;
+}
+
+@keyframes rotate {
     from { transform: rotate(0deg); }
     to { transform: rotate(360deg); }
 }
-
 
 /* ====================================================================== */
 /* 4. BARRA DE NAVEGAÇÃO INFERIOR */
@@ -174,30 +226,36 @@ html, body {
 }
 
 .nav-item {
-    color: white;
-    font-size: 12px;
+    color: #888;
     text-decoration: none;
     display: flex;
     flex-direction: column;
     align-items: center;
-    opacity: 0.6;
+    font-size: 10px;
+    font-weight: 600;
+    transition: color 0.2s;
 }
 
-.nav-item i { font-size: 20px; }
-.nav-item.active { opacity: 1; }
+.nav-item i {
+    font-size: 20px;
+    margin-bottom: 2px;
+}
+
+.nav-item.active {
+    color: white;
+}
+
 .upload-btn {
+    background-color: #ff0050; /* Cor primária do VideoT */
+    color: white;
+    border: none;
     width: 40px;
     height: 30px;
-    background-color: #25F4EE; 
-    color: black;
-    border: none;
     border-radius: 5px;
-    font-size: 16px; 
-    font-weight: bold;
+    font-size: 16px;
     display: flex;
     justify-content: center;
     align-items: center;
-    padding: 0 8px; 
     cursor: pointer;
 }
 
@@ -227,6 +285,18 @@ html, body {
     width: 90%;
     max-width: 400px;
     position: relative;
+    box-shadow: 0 5px 20px rgba(0, 0, 0, 0.5);
+}
+
+.login-box h2 {
+    color: #ff0050;
+    margin-bottom: 5px;
+}
+
+.login-subtext {
+    margin-bottom: 20px;
+    color: #bbb;
+    font-size: 14px;
 }
 
 .login-box input, 
@@ -234,55 +304,114 @@ html, body {
 .upload-box input[type="file"] {
     display: block;
     width: 100%;
-    padding: 10px;
+    padding: 12px;
     margin-bottom: 15px;
     border: 1px solid #333;
     border-radius: 5px;
     background-color: #222;
     color: white;
+    font-size: 16px;
 }
 
+/* Botões de Login/Cadastro */
 .login-box button,
 #upload-video-btn {
     padding: 10px 20px;
-    margin: 5px;
+    margin-top: 10px;
     border: none;
     border-radius: 5px;
     cursor: pointer;
     font-weight: bold;
+    width: 100%; /* Ocupa a largura total para melhor toque */
 }
-#login-btn { background-color: #25F4EE; color: black; }
-#register-btn { background-color: #ff0050; color: white; }
-#upload-video-btn { background-color: #ff0050; color: white; }
 
-#auth-status { color: #ff0050; }
-#upload-status { color: #25F4EE; margin-top: 15px; }
+#login-btn {
+    background-color: #ff0050;
+    color: white;
+    margin-bottom: 10px;
+}
 
+#register-btn {
+    background-color: #444;
+    color: white;
+}
+
+/* Estilos para o botão de Login Social (Google) */
+.social-login-btn {
+    width: 100%;
+    padding: 12px;
+    font-size: 16px;
+    margin-bottom: 15px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: background-color 0.2s;
+}
+
+.google-btn {
+    background-color: #4285F4;
+    color: white;
+    border: none;
+}
+.google-btn i {
+    margin-right: 10px;
+    font-size: 18px;
+}
+.google-btn:hover {
+    background-color: #357ae8;
+}
+
+/* Divisor OR */
+.divider {
+    color: #666;
+    margin: 15px 0;
+    position: relative;
+    text-align: center;
+    font-size: 14px;
+}
+.divider::before, .divider::after {
+    content: '';
+    position: absolute;
+    top: 50%;
+    width: 40%;
+    height: 1px;
+    background: #333;
+}
+.divider::before { left: 0; }
+.divider::after { right: 0; }
+
+/* Upload Modal */
 .close-modal {
     position: absolute;
     top: 10px;
     right: 15px;
-    font-size: 30px;
-    font-weight: bold;
-    color: white;
+    font-size: 28px;
     cursor: pointer;
+    color: #888;
 }
 
+#upload-video-btn {
+    background-color: #ff0050;
+    color: white;
+}
 
 /* ====================================================================== */
-/* 6. ESTILOS DA PÁGINA DE PERFIL E CAIXA DE ENTRADA */
+/* 6. ESTILOS DA PÁGINA DE PERFIL E INBOX */
 /* ====================================================================== */
 
 .profile-view {
-    height: calc(100vh - 60px); 
+    height: calc(100vh - 60px);
     overflow-y: scroll;
-    padding-bottom: 20px; 
+    padding-bottom: 60px; /* Evita que o conteúdo fique por baixo da nav */
+    background-color: #000;
 }
 
 .profile-header {
-    text-align: center;
-    padding: 30px 0 20px 0;
-    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 40px 20px 20px;
+    background-color: #111;
 }
 
 .profile-pic-main {
@@ -291,66 +420,91 @@ html, body {
     border-radius: 50%;
     object-fit: cover;
     margin-bottom: 10px;
-    border: 3px solid #ff0050; 
+    border: 3px solid #ff0050;
 }
 
-/* Botão Seguir/Deixar de Seguir */
-#follow-toggle-btn {
-    margin-top: 15px;
-    padding: 8px 30px;
-    font-size: 16px;
+#profile-username {
+    font-size: 24px;
     font-weight: bold;
-    border-radius: 5px;
+    margin-bottom: 5px;
+}
+
+#profile-stats {
+    font-size: 14px;
+    color: #bbb;
+    margin-bottom: 15px;
+}
+
+#follow-toggle-btn {
+    padding: 8px 25px;
+    border: none;
+    border-radius: 4px;
+    font-weight: bold;
     cursor: pointer;
     transition: background-color 0.2s;
 }
 
-/* Estilo: Seguir */
 #follow-toggle-btn.follow {
     background-color: #ff0050;
     color: white;
-    border: none;
 }
 
-/* Estilo: Deixar de Seguir */
 #follow-toggle-btn.following {
-    background-color: #333;
+    background-color: #444;
     color: white;
-    border: 1px solid #555;
 }
 
 .profile-tabs {
     display: flex;
-    justify-content: space-around;
-    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+    justify-content: center;
+    border-bottom: 1px solid #333;
+    background-color: #000;
+    position: sticky;
+    top: 0;
+    z-index: 2;
 }
 
 .tab-btn {
     background: none;
     border: none;
-    color: white;
-    padding: 15px 20px;
-    font-size: 16px;
+    color: #666;
+    padding: 10px 30px;
+    font-weight: bold;
     cursor: pointer;
-    border-bottom: 3px solid transparent;
-    transition: border-bottom 0.3s;
+    transition: color 0.2s;
 }
 
 .tab-btn.active {
-    border-bottom-color: white;
+    color: white;
+    border-bottom: 2px solid white;
 }
 
 .video-grid {
-    display: grid;
-    grid-template-columns: repeat(3, 1fr); 
-    gap: 1px; 
-    margin-top: 1px;
+    display: flex;
+    flex-wrap: wrap;
+    padding: 5px;
+    gap: 2px;
 }
 
 .video-thumbnail {
-    width: 100%;
-    aspect-ratio: 9/16; 
+    width: calc(33.33% - 2px); /* 3 colunas */
+    height: 180px; 
     object-fit: cover;
-    background-color: #222;
-    }
+    cursor: pointer;
+}
+
+/* Estilos para a Inbox/DM (simplificado) */
+#inbox-view h2 {
+    color: white;
+    text-align: center;
+}
+#chats-list {
+    background-color: #111;
+    margin: 20px;
+    border-radius: 8px;
+}
+#start-chat-btn {
+    width: calc(100% - 40px);
+    margin: 20px;
+        }
     
