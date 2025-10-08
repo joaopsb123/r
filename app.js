@@ -16,8 +16,8 @@ const firebaseConfig = {
 const CLOUDINARY_CLOUD_NAME = 'dya1jd0mx';
 // ⚠️ Nota: A API Key/Secret só seriam necessárias para uploads *assinados* do backend.
 // Para uploads diretos do frontend, usamos apenas o Cloud Name e o Preset não assinado.
-// const CLOUDINARY_API_KEY = '638656759857113'; 
-// const CLOUDINARY_API_SECRET = '-jx-m4UFNlLlpvJWycV6Ldb9tn4'; 
+const CLOUDINARY_API_KEY = '638656759857113'; 
+const CLOUDINARY_API_SECRET = '-jx-m4UFNlLlpvJWycV6Ldb9tn4'; 
 const CLOUDINARY_UPLOAD_PRESET = 'videot_unsigned_preset'; // Usando o nome correto para um preset não assinado.
 
 // ✅ URL para upload (unsigned)
