@@ -10,24 +10,75 @@
 
 html, body {
     height: 100%;
-    font-family: 'Helvetica Neue', Arial, sans-serif; /* Fonte mais moderna */
+    font-family: 'Helvetica Neue', Arial, sans-serif;
     background-color: #000;
     color: white; 
-    overflow: hidden; /* Controlamos o scroll dentro de feed-container */
+    overflow: hidden; 
 }
 
 .hidden { display: none !important; }
 
+/* Novo: Estilos específicos para a página de Login */
+.login-body {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    overflow: auto; /* Permite scroll se a tela for pequena */
+}
+
+.login-modal-full {
+    width: 100%;
+    height: 100%;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    background-color: #000;
+}
+
+/* ====================================================================== */
+/* 2. ECRÃ DE CARREGAMENTO (SPINNER) */
+/* ====================================================================== */
+
+.loading-screen {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: #000;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    z-index: 200;
+}
+
+.spinner {
+    border: 5px solid #333;
+    border-top: 5px solid #ff0050;
+    border-radius: 50%;
+    width: 50px;
+    height: 50px;
+    animation: spin 1s linear infinite;
+    margin-bottom: 20px;
+}
+
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+
+/* ====================================================================== */
+/* 3. ESTRUTURA E CONTEÚDO DA APP (index.html) */
+/* ====================================================================== */
+
 .main-container {
-    height: calc(100vh - 60px); /* Altura total menos a navegação inferior */
+    height: calc(100vh - 60px); 
     overflow: hidden;
     position: relative;
 }
 
-/* ====================================================================== */
-/* 2. CABEÇALHO E FILTROS DO FEED */
-/* ====================================================================== */
-
+/* CABEÇALHO E FILTROS DO FEED */
 .feed-header {
     position: fixed;
     top: 0;
@@ -38,7 +89,7 @@ html, body {
     justify-content: center;
     align-items: center;
     background: rgba(0, 0, 0, 0.4);
-    backdrop-filter: blur(5px); /* Efeito de vidro para um toque moderno */
+    backdrop-filter: blur(5px);
     z-index: 5; 
 }
 
@@ -59,15 +110,12 @@ html, body {
     padding-bottom: 5px;
 }
 
-/* ====================================================================== */
-/* 3. FEED DE VÍDEOS COM SCROLL-SNAP */
-/* ====================================================================== */
-
+/* FEED DE VÍDEOS COM SCROLL-SNAP */
 .feed-container {
-    height: calc(100% - 40px); /* Altura total menos o cabeçalho do filtro */
+    height: calc(100% - 40px);
     overflow-y: scroll;
     scroll-snap-type: y mandatory; 
-    margin-top: 40px; /* Espaço para o cabeçalho */
+    margin-top: 40px; 
 }
 
 .video-card {
@@ -75,7 +123,7 @@ html, body {
     width: 100vw;
     height: 100%; 
     scroll-snap-align: start; 
-    display: flex; /* Garante que o vídeo preencha o card */
+    display: flex; 
     justify-content: center;
     align-items: center;
 }
@@ -83,7 +131,7 @@ html, body {
 .video-player {
     width: 100%;
     height: 100%;
-    object-fit: cover; /* Mantém a proporção e cobre a tela */
+    object-fit: cover; 
 }
 
 /* Overlay e Conteúdo */
@@ -97,12 +145,11 @@ html, body {
     flex-direction: column;
     justify-content: flex-end; 
     color: white;
-    padding: 20px 10px 80px 20px; /* Padding inferior para a barra de navegação */
+    padding: 20px 10px 80px 20px;
     background: linear-gradient(to top, rgba(0, 0, 0, 0.5) 0%, rgba(0, 0, 0, 0) 50%);
-    pointer-events: none; /* Permite cliques passarem para o card, exceto nos botões de ação */
+    pointer-events: none;
 }
 
-/* Ícone de Play/Pause */
 .play-pause-icon {
     position: absolute;
     top: 50%;
@@ -114,14 +161,9 @@ html, body {
     pointer-events: none;
 }
 
-/* Conteúdo Esquerdo (Username, Descrição) */
 .video-content-left {
-    pointer-events: all; /* Permite clicar no username */
-    width: calc(100% - 80px); /* Deixa espaço para os botões da direita */
-}
-
-.user-info {
-    margin-bottom: 20px;
+    pointer-events: all;
+    width: calc(100% - 80px);
 }
 
 .video-username {
@@ -141,20 +183,16 @@ html, body {
     font-size: 12px;
     font-weight: 600;
 }
-.music-info i {
-    margin-right: 5px;
-}
 
-
-/* Ações à Direita (Likes, Comments, Share) */
+/* Ações à Direita */
 .video-actions-right {
     position: absolute;
     right: 15px;
-    bottom: 90px; /* Acima da barra de navegação */
+    bottom: 90px;
     display: flex;
     flex-direction: column;
     gap: 20px;
-    pointer-events: all; /* Permite clicar nos botões de ação */
+    pointer-events: all;
 }
 
 .action-button {
@@ -188,7 +226,7 @@ html, body {
     border-radius: 50%;
     background-color: #222;
     border: 1px solid #444;
-    animation: rotate 6s linear infinite; /* Animação de rotação */
+    animation: rotate 6s linear infinite;
 }
 
 .profile-pic-disk {
@@ -207,10 +245,7 @@ html, body {
     to { transform: rotate(360deg); }
 }
 
-/* ====================================================================== */
-/* 4. BARRA DE NAVEGAÇÃO INFERIOR */
-/* ====================================================================== */
-
+/* BARRA DE NAVEGAÇÃO INFERIOR */
 .bottom-nav {
     position: fixed; 
     bottom: 0;
@@ -246,7 +281,7 @@ html, body {
 }
 
 .upload-btn {
-    background-color: #ff0050; /* Cor primária do VideoT */
+    background-color: #ff0050;
     color: white;
     border: none;
     width: 40px;
@@ -259,11 +294,8 @@ html, body {
     cursor: pointer;
 }
 
-/* ====================================================================== */
-/* 5. MODAIS (LOGIN E UPLOAD) */
-/* ====================================================================== */
-
-.login-modal, .upload-modal {
+/* MODAL DE UPLOAD */
+.upload-modal {
     position: fixed;
     top: 0;
     left: 0;
@@ -276,30 +308,17 @@ html, body {
     align-items: center;
 }
 
-.login-box, .upload-box {
+.upload-box {
     background-color: #1a1a1a;
     padding: 30px;
     border-radius: 10px;
     text-align: center;
-    color: white;
     width: 90%;
     max-width: 400px;
     position: relative;
     box-shadow: 0 5px 20px rgba(0, 0, 0, 0.5);
 }
 
-.login-box h2 {
-    color: #ff0050;
-    margin-bottom: 5px;
-}
-
-.login-subtext {
-    margin-bottom: 20px;
-    color: #bbb;
-    font-size: 14px;
-}
-
-.login-box input, 
 .upload-box input[type="text"], 
 .upload-box input[type="file"] {
     display: block;
@@ -313,8 +332,6 @@ html, body {
     font-size: 16px;
 }
 
-/* Botões de Login/Cadastro */
-.login-box button,
 #upload-video-btn {
     padding: 10px 20px;
     margin-top: 10px;
@@ -322,65 +339,11 @@ html, body {
     border-radius: 5px;
     cursor: pointer;
     font-weight: bold;
-    width: 100%; /* Ocupa a largura total para melhor toque */
-}
-
-#login-btn {
+    width: 100%;
     background-color: #ff0050;
     color: white;
-    margin-bottom: 10px;
 }
 
-#register-btn {
-    background-color: #444;
-    color: white;
-}
-
-/* Estilos para o botão de Login Social (Google) */
-.social-login-btn {
-    width: 100%;
-    padding: 12px;
-    font-size: 16px;
-    margin-bottom: 15px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    transition: background-color 0.2s;
-}
-
-.google-btn {
-    background-color: #4285F4;
-    color: white;
-    border: none;
-}
-.google-btn i {
-    margin-right: 10px;
-    font-size: 18px;
-}
-.google-btn:hover {
-    background-color: #357ae8;
-}
-
-/* Divisor OR */
-.divider {
-    color: #666;
-    margin: 15px 0;
-    position: relative;
-    text-align: center;
-    font-size: 14px;
-}
-.divider::before, .divider::after {
-    content: '';
-    position: absolute;
-    top: 50%;
-    width: 40%;
-    height: 1px;
-    background: #333;
-}
-.divider::before { left: 0; }
-.divider::after { right: 0; }
-
-/* Upload Modal */
 .close-modal {
     position: absolute;
     top: 10px;
@@ -390,19 +353,11 @@ html, body {
     color: #888;
 }
 
-#upload-video-btn {
-    background-color: #ff0050;
-    color: white;
-}
-
-/* ====================================================================== */
-/* 6. ESTILOS DA PÁGINA DE PERFIL E INBOX */
-/* ====================================================================== */
-
+/* PÁGINA DE PERFIL E INBOX */
 .profile-view {
     height: calc(100vh - 60px);
     overflow-y: scroll;
-    padding-bottom: 60px; /* Evita que o conteúdo fique por baixo da nav */
+    padding-bottom: 60px;
     background-color: #000;
 }
 
@@ -435,7 +390,7 @@ html, body {
     margin-bottom: 15px;
 }
 
-#follow-toggle-btn {
+#follow-toggle-btn, #logout-btn {
     padding: 8px 25px;
     border: none;
     border-radius: 4px;
@@ -449,7 +404,7 @@ html, body {
     color: white;
 }
 
-#follow-toggle-btn.following {
+#follow-toggle-btn.following, #logout-btn {
     background-color: #444;
     color: white;
 }
@@ -487,24 +442,111 @@ html, body {
 }
 
 .video-thumbnail {
-    width: calc(33.33% - 2px); /* 3 colunas */
+    width: calc(33.33% - 2px);
     height: 180px; 
     object-fit: cover;
     cursor: pointer;
 }
 
-/* Estilos para a Inbox/DM (simplificado) */
-#inbox-view h2 {
-    color: white;
+/* ====================================================================== */
+/* 5. ESTILOS DO LOGIN BOX (Aplicável ao login.html) */
+/* ====================================================================== */
+
+.login-box {
+    background-color: #1a1a1a;
+    padding: 30px;
+    border-radius: 10px;
     text-align: center;
+    color: white;
+    width: 90%;
+    max-width: 400px;
+    box-shadow: 0 5px 20px rgba(0, 0, 0, 0.5);
 }
-#chats-list {
-    background-color: #111;
-    margin: 20px;
-    border-radius: 8px;
+
+.login-box h2 {
+    color: #ff0050;
+    margin-bottom: 5px;
 }
-#start-chat-btn {
-    width: calc(100% - 40px);
-    margin: 20px;
-        }
-    
+
+.login-subtext {
+    margin-bottom: 20px;
+    color: #bbb;
+    font-size: 14px;
+}
+
+.login-box input {
+    display: block;
+    width: 100%;
+    padding: 12px;
+    margin-bottom: 15px;
+    border: 1px solid #333;
+    border-radius: 5px;
+    background-color: #222;
+    color: white;
+    font-size: 16px;
+}
+
+.login-box button {
+    padding: 10px 20px;
+    margin-top: 10px;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+    font-weight: bold;
+    width: 100%;
+}
+
+#login-btn {
+    background-color: #ff0050;
+    color: white;
+    margin-bottom: 10px;
+}
+
+#register-btn {
+    background-color: #444;
+    color: white;
+}
+
+.social-login-btn {
+    width: 100%;
+    padding: 12px;
+    font-size: 16px;
+    margin-bottom: 15px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.google-btn {
+    background-color: #4285F4;
+    color: white;
+    border: none;
+}
+.google-btn i {
+    margin-right: 10px;
+    font-size: 18px;
+}
+
+.divider {
+    color: #666;
+    margin: 15px 0;
+    position: relative;
+    text-align: center;
+    font-size: 14px;
+}
+.divider::before, .divider::after {
+    content: '';
+    position: absolute;
+    top: 50%;
+    width: 40%;
+    height: 1px;
+    background: #333;
+}
+.divider::before { left: 0; }
+.divider::after { right: 0; }
+
+.auth-message {
+    margin-top: 15px;
+    color: #ff6666;
+    }
+        
